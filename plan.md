@@ -50,7 +50,7 @@ Pipeline for one game:
 6. The UI reads results through Spring and polls job progress.
 Job lifecycle: pending -> running -> done | failed. A failed job retries up to max_attempts (default 3) with a growing delay. A reaper in the worker resets running jobs whose locked_at is older than 15 minutes.
 5. Technology choices and software bill of materials
-Versions: use the current stable release of each at project start and pin them. Verify exact artifact names when generating the Spring project.
+Versions: use the current stable release of each at project start and pin them. Verify exact artifact names when generating the Spring project. JDK version is 25.
 Area
 Component
 Role
@@ -67,7 +67,7 @@ Store and job queue
 PostgreSQL License
 0
 API
-JDK 21 (Temurin), Kotlin 2.x, Gradle (Kotlin DSL)
+JDK 25 (Temurin), Kotlin 2.x, Gradle (Kotlin DSL)
 Build and language
 GPLv2+CE / Apache-2.0
 0
