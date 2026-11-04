@@ -1,0 +1,14 @@
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2024.01.22"]
+[White "player_white"]
+[Black "player_black"]
+[Result "1/2-1/2"]
+[WhiteElo "1098"]
+[BlackElo "1101"]
+[TimeControl "600"]
+[ECO "A00"]
+[Opening "Uncommon Opening"]
+[Termination "Game drawn by agreement"]
+
+1. g4 d5 2. h3 e5 3. Bg2 Nf6 1/2-1/2

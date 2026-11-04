@@ -1,0 +1,16 @@
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2024.01.20"]
+[White "player_white"]
+[Black "player_black"]
+[Result "0-1"]
+[WhiteElo "1102"]
+[BlackElo "1110"]
+[TimeControl "600"]
+[ECO "B20"]
+[Opening "Sicilian Defense"]
+[Termination "player_black won on time"]
+
+1. e4 {[%clk 0:10:00]} c5 {[%clk 0:10:00]} 2. Nf3 {[%clk 0:09:55]} d6 {[%clk 0:09:58]}
+3. d4 {[%clk 0:09:50]} cxd4 {[%clk 0:09:54]} 4. Nxd4 {[%clk 0:09:48]} Nf6 {[%clk 0:09:52]}
+5. Nc3 {[%clk 0:09:45]} a6 {[%clk 0:09:50]} 0-1

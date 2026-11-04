@@ -1,0 +1,14 @@
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2024.01.15"]
+[White "player_white"]
+[Black "player_black"]
+[Result "1-0"]
+[WhiteElo "1100"]
+[BlackElo "1095"]
+[TimeControl "600"]
+[ECO "C20"]
+[Opening "King's Pawn Game"]
+[Termination "player_white won by checkmate"]
+
+1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6?? 4. Qxf7# 1-0
