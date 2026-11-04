@@ -1,4 +1,4 @@
-# Build stage
+# Build stage — runs as root only to compile; no artifact runs as root
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /app
 
@@ -16,12 +16,26 @@ RUN ./gradlew bootJar --no-daemon -x test
 
 # Runtime stage
 FROM eclipse-temurin:25-jre
+
+# Create a dedicated non-root user and group.
+# Using a fixed UID/GID (1001) makes the identity stable across rebuilds
+# and avoids accidental overlap with host UIDs in bind-mount scenarios.
+RUN groupadd --gid 1001 appgroup && \
+    useradd --uid 1001 --gid appgroup --shell /bin/false --no-create-home appuser
+
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Install curl for the Docker healthcheck.
+# Done before switching user because apt-get requires root.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /app/build/libs/*.jar app.jar
+# Copy the jar and immediately set ownership so appuser can read it
+COPY --from=build --chown=appuser:appgroup /app/build/libs/*.jar app.jar
+
+# Drop privileges — everything from here runs as appuser
+USER appuser
 
 EXPOSE 8080
 
