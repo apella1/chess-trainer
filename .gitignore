@@ -1,1 +1,33 @@
+# IDE
 .idea/
+.vscode/
+*.iml
+
+# Environment secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+.venv/
+
+# Java / Gradle
+.gradle/
+build/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node
+node_modules/
+web/dist/
+web/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
