@@ -45,19 +45,58 @@ def check_ollama_reachable(url: str) -> bool:
         return False
 
 
+def check_ollama_model_ready(url: str, model: str) -> bool:
+    """
+    Check whether the configured model is fully downloaded and available.
+
+    Hits GET /api/tags and looks for the model name in the response.
+    A model that is still downloading will not appear in this list.
+    Returns False if Ollama is unreachable.
+    """
+    try:
+        response = httpx.get(f"{url}/api/tags", timeout=5.0)
+        if response.status_code != 200:
+            return False
+        data = response.json()
+        available = [m.get("name", "") for m in data.get("models", [])]
+        # Ollama model names may or may not include a tag (e.g. "qwen3:8b" or "qwen3")
+        # Match if the configured name is a prefix of any available name
+        return any(name == model or name.startswith(model.split(":")[0] + ":") and model in name
+                   for name in available)
+    except Exception:
+        return False
+
+
 def heartbeat_loop(instance_id: str, stop_event: threading.Event) -> None:
     """
     Background thread: write a heartbeat row every WORKER_POLL_SECONDS.
-    Includes Ollama reachability in the details payload.
+
+    Reports three Ollama-related facts in the details payload:
+    - ollamaReachable: Ollama server is up (/api/version returns 200)
+    - ollamaModelReady: the configured model is fully downloaded (/api/tags)
+    - ollamaModel: the model name being checked (for display)
     """
     while not stop_event.is_set():
-        ollama_ok = check_ollama_reachable(settings.ollama_url)
-        details: dict[str, Any] = {"ollamaReachable": ollama_ok}
+        ollama_reachable = check_ollama_reachable(settings.ollama_url)
+        ollama_model_ready = (
+            check_ollama_model_ready(settings.ollama_url, settings.ollama_model)
+            if ollama_reachable
+            else False
+        )
+
+        details: dict[str, Any] = {
+            "ollamaReachable": ollama_reachable,
+            "ollamaModelReady": ollama_model_ready,
+            "ollamaModel": settings.ollama_model,
+        }
 
         try:
             upsert_heartbeat(instance_id, details)
         except Exception as exc:
             log.error("Failed to write heartbeat: %s", exc)
+
+        if ollama_reachable and not ollama_model_ready:
+            log.info("Ollama is up but model '%s' is not ready yet (still downloading?)", settings.ollama_model)
 
         stop_event.wait(timeout=settings.worker_poll_seconds)
 
