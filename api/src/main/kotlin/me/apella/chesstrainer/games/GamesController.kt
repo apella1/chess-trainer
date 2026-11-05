@@ -48,7 +48,9 @@ class GamesController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): PagedResponse<GameSummaryDto> {
-        val user = userService.findOrCreateByUsername(username)
+        // Find-only: do not create a user when just listing games
+        val user = userService.findByUsername(username)
+            ?: return PagedResponse.of(emptyList(), page, size, 0)
         val pageable = PageRequest.of(page, size)
         val gamesPage = gameRepository.findGames(user.id!!, result, color, timeClass, pageable)
 
