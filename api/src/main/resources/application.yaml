@@ -51,3 +51,6 @@ logging:
     me.apella.chesstrainer: INFO
     org.flywaydb: INFO
     org.springframework.security: WARN
+
+chesscom:
+  user-agent: ${CHESSCOM_USER_AGENT:ChessTrainer/1.0 contact@example.com}

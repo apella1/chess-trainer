@@ -33,6 +33,7 @@ services:
       SPRING_FLYWAY_USER: ${DB_USER:-chess_trainer}
       SPRING_FLYWAY_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       SERVER_PORT: 8084
+      CHESSCOM_USER_AGENT: ${CHESSCOM_USER_AGENT:-ChessTrainer/1.0 contact@example.com}
     depends_on:
       postgres:
         condition: service_healthy
