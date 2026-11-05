@@ -11,11 +11,25 @@ data class WorkerStatus(
     val details: Map<String, Any>,
 )
 
+/**
+ * Ollama has two independent health dimensions:
+ * - reachable: the Ollama server process is running and responding
+ * - modelReady: the configured model is fully downloaded and available
+ *
+ * A model still downloading will show reachable=true, modelReady=false.
+ * This prevents confusing "Ollama is fine" when reviews would actually fail.
+ */
+data class OllamaStatus(
+    val status: String,           // "ok" | "down" | "model_not_ready" | "unknown"
+    val model: String?,
+    val detail: String?,
+)
+
 data class StatusResponse(
     val api: String,
     val database: String,
     val worker: WorkerStatus,
-    val ollama: String,
+    val ollama: OllamaStatus,
 )
 
 @Service
@@ -67,12 +81,42 @@ class StatusService(
     }
 
     /**
-     * Ollama reachability is reported by the worker in its heartbeat details.
-     * If the worker is down, we cannot determine Ollama status.
+     * Derives Ollama status from the worker's heartbeat details.
+     *
+     * Three possible states the worker reports:
+     * - ollamaReachable=false                      → Ollama server is down
+     * - ollamaReachable=true, modelReady=false      → Server up, model still downloading
+     * - ollamaReachable=true, modelReady=true       → Fully ready
+     *
+     * If the worker is down we cannot determine Ollama status at all.
      */
-    private fun deriveOllamaStatus(worker: WorkerStatus): String {
-        if (worker.status == "down") return "unknown"
-        val reachable = worker.details["ollamaReachable"] as? Boolean ?: return "unknown"
-        return if (reachable) "ok" else "down"
+    private fun deriveOllamaStatus(worker: WorkerStatus): OllamaStatus {
+        if (worker.status == "down") {
+            return OllamaStatus(status = "unknown", model = null, detail = "Worker is down; cannot determine Ollama status")
+        }
+
+        val reachable = worker.details["ollamaReachable"] as? Boolean
+            ?: return OllamaStatus(status = "unknown", model = null, detail = "No Ollama data in heartbeat")
+
+        val model = worker.details["ollamaModel"] as? String
+
+        if (!reachable) {
+            return OllamaStatus(
+                status = "down",
+                model = model,
+                detail = "Ollama server is not reachable at the configured URL",
+            )
+        }
+
+        val modelReady = worker.details["ollamaModelReady"] as? Boolean ?: false
+        return if (modelReady) {
+            OllamaStatus(status = "ok", model = model, detail = null)
+        } else {
+            OllamaStatus(
+                status = "model_not_ready",
+                model = model,
+                detail = "Ollama is running but the model is not yet downloaded. LLM reviews will be unavailable until the download completes.",
+            )
+        }
     }
 }
