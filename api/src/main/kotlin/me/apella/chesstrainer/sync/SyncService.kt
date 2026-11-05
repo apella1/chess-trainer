@@ -3,6 +3,7 @@ package me.apella.chesstrainer.sync
 import me.apella.chesstrainer.common.PgnHeaders
 import me.apella.chesstrainer.games.GameEntity
 import me.apella.chesstrainer.games.GameRepository
+import me.apella.chesstrainer.jobs.JobService
 import me.apella.chesstrainer.users.UserEntity
 import me.apella.chesstrainer.users.UserService
 import org.slf4j.LoggerFactory
@@ -17,6 +18,7 @@ class SyncService(
     private val gameRepository: GameRepository,
     private val userService: UserService,
     private val syncedArchiveRepository: SyncedArchiveRepository,
+    private val jobService: JobService,
 ) {
 
     private val log = LoggerFactory.getLogger(SyncService::class.java)
@@ -89,6 +91,8 @@ class SyncService(
                             val saved = importGame(user, game)
                             if (saved != null) {
                                 progress.newGames++
+                                // Enqueue analysis job for the new game
+                                saved.id?.let { jobService.enqueueAnalysis(user.id!!, it) }
                             }
                         } catch (e: Exception) {
                             log.warn("Error importing game: {}", e.message)

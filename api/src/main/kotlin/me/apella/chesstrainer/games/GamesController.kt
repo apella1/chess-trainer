@@ -3,6 +3,7 @@ package me.apella.chesstrainer.games
 import me.apella.chesstrainer.common.NotFoundException
 import me.apella.chesstrainer.common.PagedResponse
 import me.apella.chesstrainer.common.PgnHeaders
+import me.apella.chesstrainer.jobs.JobService
 import me.apella.chesstrainer.users.UserService
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
@@ -22,6 +23,7 @@ import java.util.UUID
 class GamesController(
     private val gameRepository: GameRepository,
     private val userService: UserService,
+    private val jobService: JobService,
 ) {
 
     private val log = LoggerFactory.getLogger(GamesController::class.java)
@@ -65,7 +67,12 @@ class GamesController(
     fun getGame(@PathVariable id: UUID): GameDetailDto {
         val game = gameRepository.findById(id)
             .orElseThrow { NotFoundException("Game $id not found") }
-        return game.toDetail()
+        val moves = if (game.analysisStatus == "done") {
+            gameRepository.findMovesWithEvals(id)
+        } else {
+            emptyList()
+        }
+        return game.toDetail(moves)
     }
 
     /**
@@ -128,6 +135,8 @@ class GamesController(
 
             gameRepository.save(game)
             imported++
+            // Enqueue analysis job for the uploaded game
+            game.id?.let { jobService.enqueueAnalysis(user.id!!, it) }
         }
 
         log.info("PGN upload for {}: imported={}, skipped={}", username, imported, skipped)

@@ -18,6 +18,19 @@ data class GameSummaryDto(
     val analysisStatus: String,
 )
 
+data class MoveWithEval(
+    val ply: Int,
+    val color: String,
+    val san: String,
+    val fenAfter: String,
+    val classification: String?,
+    val winPctBefore: Double?,
+    val winPctAfter: Double?,
+    val winPctLoss: Double?,
+    val bestUci: String?,
+    val isMistake: Boolean,
+)
+
 data class GameDetailDto(
     val id: UUID,
     val playedAt: Instant?,
@@ -33,6 +46,7 @@ data class GameDetailDto(
     val openingName: String?,
     val pgn: String,
     val analysisStatus: String,
+    val moves: List<MoveWithEval> = emptyList(),
 )
 
 data class GameUploadResponse(
@@ -56,7 +70,7 @@ fun GameEntity.toSummary() = GameSummaryDto(
     analysisStatus = analysisStatus,
 )
 
-fun GameEntity.toDetail() = GameDetailDto(
+fun GameEntity.toDetail(moves: List<MoveWithEval> = emptyList()) = GameDetailDto(
     id = id!!,
     playedAt = playedAt,
     timeClass = timeClass,
@@ -71,4 +85,5 @@ fun GameEntity.toDetail() = GameDetailDto(
     openingName = openingName,
     pgn = pgn,
     analysisStatus = analysisStatus,
+    moves = moves,
 )

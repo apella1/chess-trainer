@@ -47,4 +47,23 @@ interface GameRepository : JpaRepository<GameEntity, UUID> {
      * Count games for a user.
      */
     fun countByUserId(userId: UUID): Long
+
+    /**
+     * Fetch moves with their evals for a game, ordered by ply.
+     */
+    @Query(
+        """
+        SELECT new me.apella.chesstrainer.games.MoveWithEval(
+            m.ply, m.color, m.san, m.fenAfter,
+            me.classification, me.winPctBefore, me.winPctAfter, me.winPctLoss,
+            me.bestUci,
+            CASE WHEN me.classification IN ('inaccuracy', 'mistake', 'blunder') THEN true ELSE false END
+        )
+        FROM MoveEntity m
+        LEFT JOIN MoveEvalEntity me ON me.moveId = m.id
+        WHERE m.gameId = :gameId
+        ORDER BY m.ply
+        """,
+    )
+    fun findMovesWithEvals(@Param("gameId") gameId: UUID): List<MoveWithEval>
 }
