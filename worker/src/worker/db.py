@@ -81,38 +81,45 @@ def claim_job(instance_id: str) -> dict[str, Any] | None:
     Claim the next pending job using SELECT ... FOR UPDATE SKIP LOCKED.
     Returns the job row or None if no job is available.
 
+    Returns None (rather than raising) if the analysis_jobs table does not exist
+    yet — this happens during early phases before the jobs migration has run.
+
     Priority: analyze_game and generate_puzzles before review_game, to avoid
     running Stockfish and Ollama simultaneously on resource-constrained machines.
     """
-    with get_conn() as conn:
-        row = conn.execute(
-            """
-            UPDATE analysis_jobs
-            SET    status     = 'running',
-                   locked_by  = %s,
-                   locked_at  = now(),
-                   attempts   = attempts + 1,
-                   started_at = now()
-            WHERE  id = (
-                SELECT id FROM analysis_jobs
-                WHERE  status = 'pending'
-                  AND  attempts < max_attempts
-                ORDER BY
-                    CASE kind
-                        WHEN 'analyze_game'    THEN 1
-                        WHEN 'generate_puzzles' THEN 2
-                        WHEN 'review_game'     THEN 3
-                        ELSE 4
-                    END,
-                    created_at
-                FOR UPDATE SKIP LOCKED
-                LIMIT 1
-            )
-            RETURNING *
-            """,
-            (instance_id,),
-        ).fetchone()
-    return dict(row) if row else None
+    try:
+        with get_conn() as conn:
+            row = conn.execute(
+                """
+                UPDATE analysis_jobs
+                SET    status     = 'running',
+                       locked_by  = %s,
+                       locked_at  = now(),
+                       attempts   = attempts + 1,
+                       started_at = now()
+                WHERE  id = (
+                    SELECT id FROM analysis_jobs
+                    WHERE  status = 'pending'
+                      AND  attempts < max_attempts
+                    ORDER BY
+                        CASE kind
+                            WHEN 'analyze_game'    THEN 1
+                            WHEN 'generate_puzzles' THEN 2
+                            WHEN 'review_game'     THEN 3
+                            ELSE 4
+                        END,
+                        created_at
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT 1
+                )
+                RETURNING *
+                """,
+                (instance_id,),
+            ).fetchone()
+        return dict(row) if row else None
+    except psycopg.errors.UndefinedTable:
+        log.debug("claim_job skipped: analysis_jobs table does not exist yet")
+        return None
 
 
 def complete_job(job_id: str) -> None:
@@ -164,20 +171,28 @@ def reset_stale_jobs(stale_after_minutes: int = 15) -> int:
     """
     Reaper: reset jobs that have been running for too long.
     Returns the number of jobs reset.
+
+    Skips silently if the analysis_jobs table does not exist yet — this happens
+    during early phases before the jobs migration has been applied. The reaper
+    will become active once the table is created by Flyway.
     """
-    with get_conn() as conn:
-        result = conn.execute(
-            """
-            UPDATE analysis_jobs
-            SET    status    = 'pending',
-                   locked_by = null,
-                   locked_at = null
-            WHERE  status    = 'running'
-              AND  locked_at < now() - (%s || ' minutes')::interval
-            """,
-            (stale_after_minutes,),
-        )
-        count = result.rowcount
-    if count:
-        log.warning("Reaper reset %d stale job(s)", count)
-    return count
+    try:
+        with get_conn() as conn:
+            result = conn.execute(
+                """
+                UPDATE analysis_jobs
+                SET    status    = 'pending',
+                       locked_by = null,
+                       locked_at = null
+                WHERE  status    = 'running'
+                  AND  locked_at < now() - (%s || ' minutes')::interval
+                """,
+                (stale_after_minutes,),
+            )
+            count = result.rowcount
+        if count:
+            log.warning("Reaper reset %d stale job(s)", count)
+        return count
+    except psycopg.errors.UndefinedTable:
+        log.debug("Reaper skipped: analysis_jobs table does not exist yet")
+        return 0

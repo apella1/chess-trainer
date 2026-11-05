@@ -75,6 +75,11 @@ def heartbeat_loop(instance_id: str, stop_event: threading.Event) -> None:
     - ollamaReachable: Ollama server is up (/api/version returns 200)
     - ollamaModelReady: the configured model is fully downloaded (/api/tags)
     - ollamaModel: the model name being checked (for display)
+
+    Handles UndefinedTable gracefully: if the service_heartbeats table does not
+    exist yet (Flyway has not finished migrating), the error is logged at debug
+    level and the thread retries on the next cycle. This covers the startup race
+    where the worker starts before the API has run migrations.
     """
     while not stop_event.is_set():
         ollama_reachable = check_ollama_reachable(settings.ollama_url)
@@ -93,7 +98,14 @@ def heartbeat_loop(instance_id: str, stop_event: threading.Event) -> None:
         try:
             upsert_heartbeat(instance_id, details)
         except Exception as exc:
-            log.error("Failed to write heartbeat: %s", exc)
+            # UndefinedTable is expected during startup if the worker starts
+            # before the API has finished running Flyway migrations. Log at
+            # debug level so it doesn't spam the logs; the next cycle will retry.
+            exc_msg = str(exc)
+            if "does not exist" in exc_msg:
+                log.debug("Heartbeat skipped: schema not ready yet (Flyway may still be running)")
+            else:
+                log.error("Failed to write heartbeat: %s", exc)
 
         if ollama_reachable and not ollama_model_ready:
             log.info("Ollama is up but model '%s' is not ready yet (still downloading?)", settings.ollama_model)
@@ -132,11 +144,8 @@ def main() -> None:
     instance_id = get_instance_id()
     log.info("Worker starting. instance=%s", instance_id)
 
-    # Run reaper before starting the loop
-    reset_count = reset_stale_jobs()
-    log.info("Reaper: reset %d stale job(s) on startup", reset_count)
-
-    # Start heartbeat thread
+    # Start the heartbeat thread FIRST so the worker is visible on the status
+    # page immediately, even before the schema is fully ready.
     stop_event = threading.Event()
     hb_thread = threading.Thread(
         target=heartbeat_loop,
@@ -146,6 +155,12 @@ def main() -> None:
     )
     hb_thread.start()
     log.info("Heartbeat thread started")
+
+    # Run the reaper after the heartbeat is running.
+    # reset_stale_jobs handles UndefinedTable gracefully — it skips silently
+    # if the analysis_jobs migration has not been applied yet.
+    reset_count = reset_stale_jobs()
+    log.info("Reaper: reset %d stale job(s) on startup", reset_count)
 
     # Main claim loop
     log.info("Entering claim loop (poll every %ds)", settings.worker_poll_seconds)
