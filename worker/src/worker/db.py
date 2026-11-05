@@ -196,3 +196,160 @@ def reset_stale_jobs(stale_after_minutes: int = 15) -> int:
     except psycopg.errors.UndefinedTable:
         log.debug("Reaper skipped: analysis_jobs table does not exist yet")
         return 0
+
+
+# ---------------------------------------------------------------------------
+# Analysis functions (Phase 2+)
+# ---------------------------------------------------------------------------
+
+def get_game_pgn(game_id: str) -> str | None:
+    """Fetch the PGN text for a game."""
+    try:
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT pgn FROM games WHERE id = %s",
+                (game_id,),
+            ).fetchone()
+        return row["pgn"] if row else None
+    except psycopg.errors.UndefinedTable:
+        return None
+
+
+def update_game_analysis_status(game_id: str, status: str) -> None:
+    """Update the analysis_status column on the games table."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE games SET analysis_status = %s WHERE id = %s",
+            (status, game_id),
+        )
+
+
+def get_game_user_id(game_id: str) -> str | None:
+    """Fetch the user_id for a game."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT user_id FROM games WHERE id = %s",
+            (game_id,),
+        ).fetchone()
+    return str(row["user_id"]) if row else None
+
+
+def create_analysis_run(
+    game_id: str,
+    engine_name: str,
+    engine_version: str,
+    depth: int,
+    multipv: int,
+) -> str:
+    """Create an analysis_runs row and return its ID."""
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            INSERT INTO analysis_runs (game_id, engine_name, engine_version, depth, multipv, status)
+            VALUES (%s, %s, %s, %s, %s, 'running')
+            RETURNING id
+            """,
+            (game_id, engine_name, engine_version, depth, multipv),
+        ).fetchone()
+    return str(row["id"])
+
+
+def complete_analysis_run(run_id: str) -> None:
+    """Mark an analysis run as done."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE analysis_runs SET status = 'done' WHERE id = %s",
+            (run_id,),
+        )
+
+
+def insert_move(
+    game_id: str,
+    ply: int,
+    color: str,
+    san: str,
+    uci: str,
+    fen_before: str,
+    fen_after: str,
+    clock_ms: int | None,
+    time_spent_ms: int | None,
+) -> str:
+    """Insert a move row and return its ID."""
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            INSERT INTO moves (game_id, ply, color, san, uci, fen_before, fen_after, clock_ms_remaining, time_spent_ms)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (game_id, ply, color, san, uci, fen_before, fen_after, clock_ms, time_spent_ms),
+        ).fetchone()
+    return str(row["id"])
+
+
+def insert_move_eval(
+    run_id: str,
+    move_id: str,
+    eval_before_cp: int | None,
+    eval_after_cp: int | None,
+    mate_before: int | None,
+    mate_after: int | None,
+    best_uci: str | None,
+    best_eval_cp: int | None,
+    second_best_eval_cp: int | None,
+    pv_json: dict | None,
+    win_pct_before: float | None,
+    win_pct_after: float | None,
+    win_pct_loss: float | None,
+    classification: str | None,
+) -> None:
+    """Insert a move evaluation row."""
+    import json
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO move_evals (
+                run_id, move_id,
+                eval_before_cp, eval_after_cp, mate_before, mate_after,
+                best_uci, best_eval_cp, second_best_eval_cp,
+                pv_json, win_pct_before, win_pct_after, win_pct_loss, classification
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (run_id, move_id, eval_before_cp, eval_after_cp, mate_before, mate_after,
+             best_uci, best_eval_cp, second_best_eval_cp,
+             json.dumps(pv_json) if pv_json else None,
+             win_pct_before, win_pct_after, win_pct_loss, classification),
+        )
+
+
+def insert_mistake(
+    game_id: str,
+    user_id: str,
+    move_eval_id: str,
+    kind: str,
+    mistake_type: str | None,
+    tags: list[str] | None,
+    phase: str | None,
+    severity: float | None,
+    material_swing_cp: int | None,
+) -> None:
+    """Insert a mistake row."""
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO mistakes (game_id, user_id, move_eval_id, kind, type, tags, phase, severity, material_swing_cp)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (game_id, user_id, move_eval_id, kind, mistake_type, tags, phase, severity, material_swing_cp),
+        )
+
+
+def get_move_eval_id(run_id: str, move_id: str) -> str | None:
+    """Get the move_eval ID for a given run and move."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM move_evals WHERE run_id = %s AND move_id = %s",
+            (run_id, move_id),
+        ).fetchone()
+    return str(row["id"]) if row else None

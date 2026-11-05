@@ -26,13 +26,13 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml ./
 
 # Install Python dependencies system-wide so the non-root worker user can import them.
-# --no-cache avoids writing cache files that would need cleanup.
 RUN uv pip install --system --no-cache \
     "psycopg[binary,pool]" \
     pydantic \
     pydantic-settings \
     httpx \
-    tenacity
+    tenacity \
+    chess
 
 # Copy source and transfer ownership to the worker user in one layer.
 # Combining COPY + chown avoids a separate RUN chown which would double the layer size.

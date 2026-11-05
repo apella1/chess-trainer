@@ -21,6 +21,7 @@ import httpx
 
 from worker.config import settings
 from worker.db import claim_job, complete_job, fail_job, reset_stale_jobs, upsert_heartbeat
+from worker.engine import EngineWrapper
 
 logging.basicConfig(
     level=logging.INFO,
@@ -113,23 +114,22 @@ def heartbeat_loop(instance_id: str, stop_event: threading.Event) -> None:
         stop_event.wait(timeout=settings.worker_poll_seconds)
 
 
-def dispatch_job(job: dict[str, Any]) -> None:
+def dispatch_job(job: dict[str, Any], engine: EngineWrapper) -> None:
     """
     Dispatch a claimed job to the appropriate handler based on kind.
-
-    Phase 0: no job kinds are registered yet. Jobs will be added in Phase 2+.
     """
     kind = job["kind"]
     job_id = str(job["id"])
 
     log.info("Processing job %s kind=%s", job_id, kind)
 
-    # Handlers will be registered here as phases are built.
-    # Example (Phase 2):
-    #   if kind == "analyze_game":
-    #       from worker.analysis import analyze_game
-    #       analyze_game(job)
-    #       return
+    if kind == "analyze_game":
+        from worker.analysis import analyze_game
+        analyze_game(job, engine)
+        return
+
+    # generate_puzzles (Phase 3) and review_game (Phase 4) handlers
+    # will be added here as those phases are built.
 
     raise NotImplementedError(f"No handler registered for job kind: {kind!r}")
 
@@ -156,9 +156,14 @@ def main() -> None:
     hb_thread.start()
     log.info("Heartbeat thread started")
 
+    # Start the Stockfish engine
+    engine = EngineWrapper()
+    try:
+        engine.start()
+    except Exception as exc:
+        log.error("Failed to start Stockfish: %s. Analysis jobs will fail until fixed.", exc)
+
     # Run the reaper after the heartbeat is running.
-    # reset_stale_jobs handles UndefinedTable gracefully — it skips silently
-    # if the analysis_jobs migration has not been applied yet.
     reset_count = reset_stale_jobs()
     log.info("Reaper: reset %d stale job(s) on startup", reset_count)
 
@@ -181,7 +186,7 @@ def main() -> None:
             log.info("Claimed job id=%s kind=%s attempt=%d", job_id, job["kind"], job["attempts"])
 
             try:
-                dispatch_job(job)
+                dispatch_job(job, engine)
                 complete_job(job_id)
                 log.info("Completed job id=%s kind=%s", job_id, job["kind"])
             except NotImplementedError as exc:
@@ -204,6 +209,7 @@ def main() -> None:
     finally:
         stop_event.set()
         hb_thread.join(timeout=5)
+        engine.stop()
         log.info("Worker stopped")
 
 
