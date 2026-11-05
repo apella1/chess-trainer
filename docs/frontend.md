@@ -65,19 +65,19 @@ Job progress and worker status are polled. Polling intervals are defined in one 
 
 ## Dev Proxy
 
-Vite proxies `/api` to `http://api:8080` in development. This means the React dev server and
+Vite proxies `/api` to `http://api:8084` in development. This means the React dev server and
 the Spring API are on the same origin from the browser's perspective, avoiding CORS in dev.
 
 ```typescript
 // vite.config.ts
 server: {
   proxy: {
-    '/api': 'http://localhost:8080'
+    '/api': 'http://localhost:8084'
   }
 }
 ```
 
-In Docker Compose, the web service uses `http://api:8080` as the proxy target.
+In Docker Compose, the web service uses `http://api:8084` as the proxy target.
 
 ## Conventions
 

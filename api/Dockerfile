@@ -37,6 +37,6 @@ COPY --from=build --chown=appuser:appgroup /app/build/libs/*.jar app.jar
 # Drop privileges — everything from here runs as appuser
 USER appuser
 
-EXPOSE 8080
+EXPOSE 8084
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

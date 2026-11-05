@@ -30,9 +30,9 @@ runs them to completion.
 | Service  | Technology                       | Port | Notes                                      |
 |----------|----------------------------------|------|--------------------------------------------|
 | postgres | PostgreSQL 16                    | 5432 | Named volume `pgdata`; job queue table lives here |
-| api      | Spring Boot, Kotlin, JDK 25      | 8080 | Owns all DDL via Flyway; the only process that exposes HTTP |
+| api      | Spring Boot, Kotlin, JDK 25      | 8084 | Owns all DDL via Flyway; the only process that exposes HTTP |
 | worker   | Python 3.12                      | —    | Stateless; scale with `--scale worker=N`   |
-| web      | React 19, Vite, Tailwind, shadcn | 5173 | Dev: Vite HMR; prod: static build served by nginx |
+| web      | React 19, Vite, Tailwind, shadcn | 5176 | Dev: Vite HMR; prod: static build served by nginx |
 | ollama   | Host process                     | 11434 | Not in Compose; containers reach it at `host.docker.internal:11434` |
 
 ## Key Architectural Decisions

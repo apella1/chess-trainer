@@ -18,7 +18,7 @@ make up                        # docker compose up --build -d
 make logs                      # tail all service logs
 ```
 
-Open http://localhost:5173. The Status page should show all services green within ~30 seconds.
+Open http://localhost:5176. The Status page should show all services green within ~30 seconds.
 
 ## Make Targets
 
@@ -52,8 +52,8 @@ The `.env` file is loaded by Docker Compose automatically. Key variables:
 | Service  | Host port | Container port |
 |----------|-----------|----------------|
 | postgres | 5432      | 5432           |
-| api      | 8080      | 8080           |
-| web      | 5173      | 5173           |
+| api      | 8084      | 8084           |
+| web      | 5176      | 5176           |
 
 The worker exposes no port.
 

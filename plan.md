@@ -260,7 +260,7 @@ chess-trainer/
 └── web/
     ├── Dockerfile
     ├── package.json
-    ├── vite.config.ts            # dev proxy /api -> api:8080
+    ├── vite.config.ts            # dev proxy /api -> api:8084
     └── src/
         ├── main.tsx
         ├── app/                  # router, providers
@@ -282,7 +282,7 @@ postgres:16
 Named volume pgdata, healthcheck pg_isready
 api
 ./api
-8080
+8084
 Depends on postgres healthy; healthcheck on /actuator/health
 worker
 ./worker
@@ -290,7 +290,7 @@ none
 Depends on postgres healthy; scale with --scale worker=N
 web
 ./web
-5173
+5176
 Vite dev server in dev; static build in prod-like mode
 Ollama
 host process
@@ -390,7 +390,7 @@ Review pipeline (facts.py, llm.py, review.py):
 11. Frontend
 Routes: / (Status), /games, /games/:id, /train, /weaknesses, /sessions, /settings.
 Key components: Board (react-chessboard with chess.js), MoveList (SAN with clock and classification badges), EvalChart (win probability per ply), ReviewPanel, PuzzleBoard (move entry, hint, retry, refutation display), JobProgress (polls /api/jobs/summary).
-Conventions: server state through TanStack Query only, polling intervals defined in one place, all API types in src/types mirrored from the DTOs, Vite proxies /api to api:8080 in dev.
+Conventions: server state through TanStack Query only, polling intervals defined in one place, all API types in src/types mirrored from the DTOs, Vite proxies /api to api:8084 in dev.
 12. Phases
 Each phase is complete only when its acceptance checks pass and the app runs end to end from docker compose up.
 Phase 0: Walking skeleton

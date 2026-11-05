@@ -128,7 +128,7 @@ layer packages (no `controllers/`, no `services/`, no `repositories/` directorie
 
 ## CORS
 
-In development, `http://localhost:5173` (Vite dev server) is allowed. In production the
+In development, `http://localhost:5176` (Vite dev server) is allowed. In production the
 allowed origin is the configured app domain. Configured in `CorsConfig.kt`.
 
 ## Security

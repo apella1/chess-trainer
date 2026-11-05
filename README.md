@@ -19,7 +19,7 @@ cp .env.example .env
 make up
 
 # 4. Open the app
-open http://localhost:5173
+open http://localhost:5176
 ```
 
 The Status page shows whether all services are running. The worker writes a heartbeat every
