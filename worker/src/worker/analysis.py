@@ -56,6 +56,9 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
     # If analysis_status is already 'done', skip
     # (the job will be claimed but we check before doing work)
 
+    # Clean up any partial analysis from a previous run (crash recovery)
+    db.clear_game_analysis(game_id)
+
     # Create analysis run
     run_id = db.create_analysis_run(
         game_id=game_id,
@@ -68,7 +71,7 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
     db.update_game_analysis_status(game_id, "running")
 
     board = game.board()
-    prev_clock_ms: int | None = None
+    prev_clocks: dict[str, int | None] = {"white": None, "black": None}
 
     log.info(
         "Analyzing game %s with %s depth=%d multipv=%d",
@@ -81,12 +84,12 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
         color = "white" if board.turn == chess.WHITE else "black"
 
         # Extract clock time from PGN [%clk ...] comments
+        # clock_ms_remaining is the clock after the move (including increment).
+        # time_spent_ms is left null — deriving it requires parsing the increment
+        # from [TimeControl] headers, which is a refinement for a later phase.
         clock_seconds = node.clock()
         clock_ms = int(clock_seconds * 1000) if clock_seconds is not None else None
-        time_spent_ms = None
-        if clock_ms is not None and prev_clock_ms is not None:
-            time_spent_ms = prev_clock_ms - clock_ms
-        prev_clock_ms = clock_ms
+        prev_clocks[color] = clock_ms
 
         # --- Evaluate position BEFORE the move (mover's perspective) ---
         before_infos = engine.analyse(board, depth=settings.analysis_depth, multipv=settings.analysis_multipv)
@@ -140,7 +143,6 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
 
         # --- Clock data extracted above from PGN comments ---
         clock_ms_remaining = clock_ms
-        time_spent = time_spent_ms
 
         # --- Write move row ---
         move_id = db.insert_move(
@@ -152,7 +154,7 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
             fen_before=fen_before,
             fen_after=fen_after,
             clock_ms=clock_ms_remaining,
-            time_spent_ms=time_spent,
+            time_spent_ms=None,
         )
 
         # --- Write move eval row ---

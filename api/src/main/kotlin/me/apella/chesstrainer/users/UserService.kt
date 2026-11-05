@@ -7,6 +7,8 @@ import java.util.UUID
 @Service
 class UserService(private val userRepository: UserRepository) {
 
+    fun findAll(): List<UserEntity> = userRepository.findAll()
+
     fun findById(id: UUID): UserEntity =
         userRepository.findById(id).orElseThrow { IllegalArgumentException("User $id not found") }
 

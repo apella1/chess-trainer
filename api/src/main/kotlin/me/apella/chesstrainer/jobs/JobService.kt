@@ -11,6 +11,43 @@ class JobService(private val jobRepository: JobRepository) {
     private val log = LoggerFactory.getLogger(JobService::class.java)
 
     /**
+     * Get a job summary: counts by status and kind.
+     */
+    fun getSummary(): JobSummaryResponse {
+        val rows = jobRepository.getSummary()
+
+        var pending = 0
+        var running = 0
+        var done = 0
+        var failed = 0
+        val byKind = mutableMapOf<String, MutableMap<String, Int>>()
+
+        for (row in rows) {
+            val status = row[0] as String
+            val kind = row[1] as String
+            val count = (row[2] as Number).toInt()
+
+            when (status) {
+                "pending" -> pending += count
+                "running" -> running += count
+                "done" -> done += count
+                "failed" -> failed += count
+            }
+            byKind.getOrPut(kind) { mutableMapOf() }[status] = count
+        }
+
+        return JobSummaryResponse(
+            total = JobSummary(
+                pending = pending,
+                running = running,
+                done = done,
+                failed = failed,
+                byKind = byKind.mapValues { it.value.toMap() },
+            ),
+        )
+    }
+
+    /**
      * Enqueue an analyze_game job for a game if one doesn't already exist.
      * Idempotent: safe to call multiple times for the same game.
      */

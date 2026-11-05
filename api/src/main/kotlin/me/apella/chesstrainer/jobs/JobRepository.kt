@@ -26,4 +26,9 @@ interface JobRepository : JpaRepository<JobEntity, UUID> {
      * Used by sync to avoid enqueuing duplicate jobs.
      */
     fun existsByGameIdAndKind(gameId: UUID, kind: String): Boolean
+
+    /**
+     * Get job counts grouped by status and kind.
+     */
+    fun getSummary(): List<Array<Any>> = countByStatusAndKind()
 }

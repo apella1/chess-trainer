@@ -353,3 +353,22 @@ def get_move_eval_id(run_id: str, move_id: str) -> str | None:
             (run_id, move_id),
         ).fetchone()
     return str(row["id"]) if row else None
+
+
+def clear_game_analysis(game_id: str) -> None:
+    """
+    Delete all analysis data for a game (mistakes, move_evals, moves, runs).
+    Called before re-analysis to ensure no duplicate rows on restart.
+    Safe to call even if no analysis data exists yet.
+    """
+    try:
+        with get_conn() as conn:
+            conn.execute("DELETE FROM mistakes WHERE game_id = %s", (game_id,))
+            conn.execute(
+                "DELETE FROM move_evals WHERE run_id IN (SELECT id FROM analysis_runs WHERE game_id = %s)",
+                (game_id,),
+            )
+            conn.execute("DELETE FROM moves WHERE game_id = %s", (game_id,))
+            conn.execute("DELETE FROM analysis_runs WHERE game_id = %s", (game_id,))
+    except psycopg.errors.UndefinedTable:
+        log.debug("clear_game_analysis skipped: tables do not exist yet")
