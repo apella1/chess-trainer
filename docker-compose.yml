@@ -47,6 +47,10 @@ services:
     build: ./worker
     networks:
       - chess_trainer_net
+    # Maps host.docker.internal to the host's gateway IP so the worker
+    # can reach Ollama running natively on the host machine.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DB_URL: postgresql://${DB_USER:-chess_trainer}:${DB_PASSWORD:?DB_PASSWORD is required}@postgres:5432/${DB_NAME:-chess_trainer}
       STOCKFISH_PATH: ${STOCKFISH_PATH:-/usr/games/stockfish}
