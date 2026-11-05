@@ -16,6 +16,7 @@ class SyncService(
     private val chesscomClient: ChesscomClient,
     private val gameRepository: GameRepository,
     private val userService: UserService,
+    private val syncedArchiveRepository: SyncedArchiveRepository,
 ) {
 
     private val log = LoggerFactory.getLogger(SyncService::class.java)
@@ -46,19 +47,39 @@ class SyncService(
             val user = userService.findOrCreateByUsername(username)
 
             // Fetch archive URLs (chess.com returns oldest-first)
-            val archiveUrls = chesscomClient.fetchArchives(username)
-            progress.archivesTotal = archiveUrls.size
-            log.info("Found {} archives for {}", archiveUrls.size, username)
-
-            if (archiveUrls.isEmpty()) {
+            val allArchiveUrls = chesscomClient.fetchArchives(username)
+            if (allArchiveUrls.isEmpty()) {
                 progress.status = "done"
                 progress.finishedAt = Instant.now()
                 log.info("Sync complete: no archives found for {}", username)
                 return
             }
 
+            // Determine which archives to fetch using incremental sync:
+            // 1. Skip archives already in synced_archives
+            // 2. Always re-check the most recent synced archive (current month may have new games)
+            val alreadySynced = syncedArchiveRepository.findArchiveUrlsByUserId(user.id!!).toSet()
+            val mostRecentSynced = alreadySynced.maxByOrNull { it }
+
+            val archivesToFetch = allArchiveUrls.filter { url ->
+                url !in alreadySynced || url == mostRecentSynced
+            }
+
+            progress.archivesTotal = archivesToFetch.size
+            log.info(
+                "Sync for {}: {} total archives, {} already synced, {} to fetch",
+                username, allArchiveUrls.size, alreadySynced.size, archivesToFetch.size,
+            )
+
+            if (archivesToFetch.isEmpty()) {
+                progress.status = "done"
+                progress.finishedAt = Instant.now()
+                log.info("Sync complete: no new archives to fetch for {}", username)
+                return
+            }
+
             // Process most recent first for better UX
-            for (archiveUrl in archiveUrls.reversed()) {
+            for (archiveUrl in archivesToFetch.reversed()) {
                 try {
                     val games = chesscomClient.fetchArchiveGames(archiveUrl)
                     progress.gamesFound += games.size
@@ -73,6 +94,14 @@ class SyncService(
                             log.warn("Error importing game: {}", e.message)
                         }
                     }
+
+                    // Mark this archive as synced (idempotent — ON CONFLICT DO NOTHING
+                    // would be ideal, but JpaRepository.save with IdClass handles this)
+                    if (archiveUrl !in alreadySynced) {
+                        syncedArchiveRepository.save(
+                            SyncedArchive(userId = user.id!!, archiveUrl = archiveUrl)
+                        )
+                    }
                 } catch (e: Exception) {
                     log.warn("Error processing archive {}: {}", archiveUrl, e.message)
                 }
@@ -83,7 +112,7 @@ class SyncService(
             progress.status = "done"
             progress.finishedAt = Instant.now()
             log.info(
-                "Sync complete for {}: archives={}/{}, gamesFound={}, newGames={}",
+                "Sync complete for {}: archives fetched={}/{}, gamesFound={}, newGames={}",
                 username, progress.archivesProcessed, progress.archivesTotal,
                 progress.gamesFound, progress.newGames,
             )
@@ -134,8 +163,7 @@ class SyncService(
             openingName = PgnHeaders.openingName(headers),
         )
 
-        val saved = gameRepository.save(entity)
-        return saved
+        return gameRepository.save(entity)
     }
 
     /**
@@ -158,7 +186,6 @@ class SyncService(
             userSide.result == "win" -> "win"
             oppSide.result == "win" -> "loss"
             userSide.result == "draw" || oppSide.result == "draw" -> "draw"
-            // Stalemate, insufficient material, repetition, etc.
             listOf("stalemate", "insufficient", "repetition", "50move").any {
                 userSide.result?.contains(it) == true || oppSide.result?.contains(it) == true
             } -> "draw"
