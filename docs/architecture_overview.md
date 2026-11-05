@@ -54,7 +54,11 @@ These decisions are intentional and should not be changed without an ADR.
 
 5. **Ollama runs on the host.** Docker on macOS cannot use the Apple GPU. Keeping Ollama
    native and reaching it from containers via `host.docker.internal` gives full GPU access
-   without any Docker workarounds.
+   without any Docker workarounds. The `docker-compose.yml` worker service includes
+   `extra_hosts: ["host.docker.internal:host-gateway"]` to ensure the hostname resolves
+   inside the container. Without this mapping, `host.docker.internal` may not resolve on
+   all Docker platforms, causing the worker to report Ollama as unreachable even when it
+   is running on the host.
 
 6. **Everything is idempotent.** Games are unique on `(user_id, source, external_id)`.
    Re-syncing never creates duplicates. Jobs can be retried safely.

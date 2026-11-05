@@ -10,6 +10,31 @@
 The API and worker are built inside Docker. You do not need JDK, Python, or Gradle installed
 on the host to run the app.
 
+## Ollama Connectivity
+
+Ollama runs natively on the host, not in Docker. The worker container reaches it via
+`host.docker.internal:11434`. This requires two things in `docker-compose.yml`:
+
+1. **`extra_hosts` mapping** on the worker service:
+   ```yaml
+   extra_hosts:
+     - "host.docker.internal:host-gateway"
+   ```
+   Without this, `host.docker.internal` may not resolve inside the container on all Docker
+   platforms. If Ollama shows as `down` on the Status page but `ollama list` works on the
+   host, this mapping is missing or not taking effect.
+
+2. **`OLLAMA_URL` environment variable** defaults to
+   `http://host.docker.internal:11434`. Override it in `.env` if your Ollama instance
+   runs on a different address.
+
+The worker checks two things independently and reports them in the heartbeat:
+- `ollamaReachable`: Ollama server is up (`GET /api/version`)
+- `ollamaModelReady`: the configured model is fully downloaded (`GET /api/tags`)
+
+If the model is still downloading, the Status page shows an amber "downloading" badge
+instead of a red "down" badge, so you know to wait rather than debug.
+
 ## Quick Start
 
 ```bash
