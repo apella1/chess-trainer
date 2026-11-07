@@ -459,3 +459,122 @@ def enqueue_job(user_id: str, game_id: str, kind: str) -> None:
             )
     except psycopg.errors.UndefinedTable:
         log.debug("enqueue_job: analysis_jobs table does not exist yet")
+
+# ---------------------------------------------------------------------------
+# Game metadata and move listing (used by facts.py)
+# ---------------------------------------------------------------------------
+
+def get_game_metadata(game_id: str) -> dict[str, Any] | None:
+    """Fetch game metadata for the facts package."""
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT result, user_color, user_rating, opp_rating, opp_username,
+                   eco, opening_name, time_class, time_control
+            FROM games WHERE id = %s
+            """,
+            (game_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def fetch_moves_with_evals(game_id: str) -> list[dict[str, Any]]:
+    """Fetch all moves with their evals for a game, ordered by ply."""
+    try:
+        with get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT mo.ply, mo.san, mo.color, mo.fen_before, mo.clock_ms_remaining,
+                       me.classification, me.win_pct_before, me.win_pct_after, me.win_pct_loss,
+                       me.best_uci, me.best_eval_cp
+                FROM moves mo
+                LEFT JOIN move_evals me ON me.move_id = mo.id
+                WHERE mo.game_id = %s
+                ORDER BY mo.ply
+                """,
+                (game_id,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except psycopg.errors.UndefinedTable:
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Review functions (Phase 4+)
+# ---------------------------------------------------------------------------
+
+def get_latest_analysis_run_id(game_id: str) -> str | None:
+    """Get the most recent completed analysis run for a game."""
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT id FROM analysis_runs
+            WHERE game_id = %s AND status = 'done'
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            (game_id,),
+        ).fetchone()
+    return str(row["id"]) if row else None
+
+
+def review_exists(game_id: str, model: str, prompt_version: str) -> bool:
+    """Check if a review already exists for this (game, model, prompt_version)."""
+    try:
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM game_reviews WHERE game_id=%s AND model=%s AND prompt_version=%s LIMIT 1",
+                (game_id, model, prompt_version),
+            ).fetchone()
+        return row is not None
+    except psycopg.errors.UndefinedTable:
+        return False
+
+
+def insert_review(
+    game_id: str,
+    run_id: str | None,
+    model: str,
+    prompt_version: str,
+    facts_json: dict,
+    review_json: dict,
+    review_text: str,
+    validation_status: str,
+) -> None:
+    """Insert a game review. Uses ON CONFLICT to replace if regenerating."""
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO game_reviews
+                (game_id, run_id, model, prompt_version, facts_json, review_json, review_text, validation_status)
+            VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s)
+            ON CONFLICT (game_id, model, prompt_version)
+            DO UPDATE SET
+                run_id = EXCLUDED.run_id,
+                facts_json = EXCLUDED.facts_json,
+                review_json = EXCLUDED.review_json,
+                review_text = EXCLUDED.review_text,
+                validation_status = EXCLUDED.validation_status,
+                created_at = now()
+            """,
+            (game_id, run_id, model, prompt_version,
+             json.dumps(facts_json), json.dumps(review_json), review_text, validation_status),
+        )
+
+
+def get_review(game_id: str) -> dict[str, Any] | None:
+    """Fetch the most recent review for a game."""
+    try:
+        with get_conn() as conn:
+            row = conn.execute(
+                """
+                SELECT id, game_id, model, prompt_version, facts_json, review_json,
+                       review_text, validation_status, created_at
+                FROM game_reviews
+                WHERE game_id = %s
+                ORDER BY created_at DESC LIMIT 1
+                """,
+                (game_id,),
+            ).fetchone()
+        return dict(row) if row else None
+    except psycopg.errors.UndefinedTable:
+        return None

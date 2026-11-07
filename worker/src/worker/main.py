@@ -133,7 +133,10 @@ def dispatch_job(job: dict[str, Any], engine: EngineWrapper) -> None:
         generate_puzzles(job)
         return
 
-    # review_game handler (Phase 4) will be added here
+    if kind == "review_game":
+        from worker.review import review_game
+        review_game(job)
+        return
 
     raise NotImplementedError(f"No handler registered for job kind: {kind!r}")
 
