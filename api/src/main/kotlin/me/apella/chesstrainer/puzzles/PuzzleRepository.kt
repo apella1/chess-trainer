@@ -25,7 +25,7 @@ interface PuzzleRepository : JpaRepository<PuzzleEntity, UUID> {
         ORDER BY p.createdAt DESC
         """,
     )
-    fun findNextPuzzle(@Param("userId") userId: UUID): PuzzleEntity?
+    fun findNextPuzzle(@Param("userId") userId: UUID, pageable: org.springframework.data.domain.Pageable): List<PuzzleEntity>
 }
 
 @Repository

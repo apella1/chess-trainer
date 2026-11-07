@@ -22,7 +22,8 @@ class PuzzleService(
      */
     fun getNextPuzzle(username: String): PuzzleDto? {
         val user = userService.findByUsername(username) ?: return null
-        return puzzleRepository.findNextPuzzle(user.id!!)?.toDto()
+        val pageable = org.springframework.data.domain.PageRequest.of(0, 1)
+        return puzzleRepository.findNextPuzzle(user.id!!, pageable).firstOrNull()?.toDto()
     }
 
     /**
