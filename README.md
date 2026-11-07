@@ -71,9 +71,29 @@ See `docs/architecture_overview.md` for details.
 
 ## Build Status
 
-Phase 0 (walking skeleton) complete:
-- ✅ Docker Compose wires all four services with healthchecks
-- ✅ Flyway V1 migration creates `users` and `service_heartbeats`
-- ✅ Spring API exposes `/api/status` and `/actuator/health`
-- ✅ Worker writes heartbeats and checks Ollama reachability
-- ✅ Status page shows all services with live heartbeat age
+Phase 0 ✅ Walking skeleton
+- Docker Compose, Flyway V1, `/api/status`, worker heartbeat, Status page
+
+Phase 1 ✅ Game library
+- chess.com sync (incremental), PGN upload, games list with filters, PGN replay viewer
+- Tempo branding, board themes, click-through from landing page
+
+Phase 2 ✅ Engine analysis
+- Stockfish depth-14 analysis, win-probability classification (Lichess formula)
+- Moves, eval chart, mistake highlighting in game detail view
+- Job progress indicator, clock data from PGN
+
+Phase 3 ✅ Puzzles from your mistakes
+- Quality filters (unique solution ≥15% gap, decided position exclusion, FEN dedup)
+- Theme grouping, click-to-move with valid square dots, drag-and-drop
+- Restart button, attempt persistence
+
+Phase 4 ✅ Local LLM game reviews
+- Facts package → Ollama (qwen3:8b) → structured JSON review with validation
+- ReviewPanel in game detail: summary, key moments, strengths, habit to fix
+- Regenerate button, model/prompt version badge
+
+Phase 5 (planned) — Level-aware weakness profile  
+Phase 6 (planned) — Deliberate practice loop  
+Phase 7 (planned) — Multi-user auth  
+Phase 8 (planned) — Extensions (Lichess puzzles, opening explorer)
