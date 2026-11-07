@@ -128,8 +128,12 @@ def dispatch_job(job: dict[str, Any], engine: EngineWrapper) -> None:
         analyze_game(job, engine)
         return
 
-    # generate_puzzles (Phase 3) and review_game (Phase 4) handlers
-    # will be added here as those phases are built.
+    if kind == "generate_puzzles":
+        from worker.puzzles import generate_puzzles
+        generate_puzzles(job)
+        return
+
+    # review_game handler (Phase 4) will be added here
 
     raise NotImplementedError(f"No handler registered for job kind: {kind!r}")
 

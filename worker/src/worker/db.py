@@ -372,3 +372,90 @@ def clear_game_analysis(game_id: str) -> None:
             conn.execute("DELETE FROM analysis_runs WHERE game_id = %s", (game_id,))
     except psycopg.errors.UndefinedTable:
         log.debug("clear_game_analysis skipped: tables do not exist yet")
+
+
+# ---------------------------------------------------------------------------
+# Puzzle functions (Phase 3+)
+# ---------------------------------------------------------------------------
+
+def fetch_mistakes_with_evals(game_id: str) -> list[dict[str, Any]]:
+    """
+    Fetch all mistakes for a game with their move evals and move data.
+    Joins mistakes, move_evals, and moves tables.
+    """
+    try:
+        with get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT m.id, m.kind, m.type, m.phase,
+                       me.classification, me.win_pct_before, me.win_pct_loss,
+                       me.best_uci, me.best_eval_cp, me.second_best_eval_cp,
+                       mo.fen_before, mo.color, mo.ply, mo.san
+                FROM mistakes m
+                JOIN move_evals me ON m.move_eval_id = me.id
+                JOIN moves mo ON me.move_id = mo.id
+                WHERE m.game_id = %s
+                ORDER BY mo.ply
+                """,
+                (game_id,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except psycopg.errors.UndefinedTable:
+        log.debug("fetch_mistakes_with_evals: tables do not exist yet")
+        return []
+
+
+def insert_puzzle(
+    user_id: str,
+    source: str,
+    source_mistake_id: str,
+    fen: str,
+    side_to_move: str,
+    solution_uci: list[str],
+    themes: list[str],
+    difficulty_est: float,
+) -> None:
+    """Insert a new puzzle. solution_uci and themes are stored as JSONB."""
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO puzzles (user_id, source, source_mistake_id, fen, side_to_move, solution_uci, themes, difficulty_est)
+            VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s)
+            """,
+            (user_id, source, source_mistake_id, fen, side_to_move,
+             json.dumps(solution_uci), json.dumps(themes), difficulty_est),
+        )
+
+
+def puzzle_exists_by_fen(user_id: str, fen: str) -> bool:
+    """Check if a puzzle already exists for this user with the same FEN."""
+    try:
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM puzzles WHERE (user_id = %s OR user_id IS NULL) AND fen = %s LIMIT 1",
+                (user_id, fen),
+            ).fetchone()
+        return row is not None
+    except psycopg.errors.UndefinedTable:
+        return False
+
+
+def enqueue_job(user_id: str, game_id: str, kind: str) -> None:
+    """
+    Enqueue a job from the worker side (e.g., generate_puzzles after analysis).
+    Idempotent: checks if a job of this kind already exists for the game.
+    """
+    try:
+        with get_conn() as conn:
+            existing = conn.execute(
+                "SELECT 1 FROM analysis_jobs WHERE game_id = %s AND kind = %s LIMIT 1",
+                (game_id, kind),
+            ).fetchone()
+            if existing:
+                return
+            conn.execute(
+                "INSERT INTO analysis_jobs (user_id, game_id, kind, status) VALUES (%s, %s, %s, 'pending')",
+                (user_id, game_id, kind),
+            )
+    except psycopg.errors.UndefinedTable:
+        log.debug("enqueue_job: analysis_jobs table does not exist yet")

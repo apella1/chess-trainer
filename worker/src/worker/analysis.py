@@ -203,3 +203,6 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
     db.complete_analysis_run(run_id)
     db.update_game_analysis_status(game_id, "done")
     log.info("Analysis complete for game %s", game_id)
+
+    # Enqueue puzzle generation for this game
+    db.enqueue_job(user_id, game_id, "generate_puzzles")
