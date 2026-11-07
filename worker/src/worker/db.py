@@ -578,3 +578,98 @@ def get_review(game_id: str) -> dict[str, Any] | None:
         return dict(row) if row else None
     except psycopg.errors.UndefinedTable:
         return None
+
+# ---------------------------------------------------------------------------
+# Reclassification (Phase 5+)
+# ---------------------------------------------------------------------------
+
+def fetch_mistakes_for_reclassify(game_id: str) -> list[dict[str, Any]]:
+    """
+    Fetch all mistakes for a game with the data needed for classify.py.
+    Includes fen_before, fen_after, played uci, best_uci, win_pct values,
+    ply, clock, and time_control.
+    """
+    try:
+        with get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT m.id as mistake_id,
+                       mo.ply, mo.color, mo.uci as played_uci, mo.fen_before, mo.fen_after,
+                       mo.clock_ms_remaining,
+                       me.best_uci, me.win_pct_before, me.win_pct_after, me.win_pct_loss,
+                       me.eval_before_cp,
+                       g.time_control
+                FROM mistakes m
+                JOIN move_evals me ON m.move_eval_id = me.id
+                JOIN moves mo ON me.move_id = mo.id
+                JOIN games g ON m.game_id = g.id
+                WHERE m.game_id = %s
+                ORDER BY mo.ply
+                """,
+                (game_id,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except psycopg.errors.UndefinedTable:
+        return []
+
+
+def update_mistake_type(mistake_id: str, mistake_type: str, tags: list[str], phase: str) -> None:
+    """Update the type, tags, and phase columns on a mistake row."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE mistakes SET type = %s, tags = %s, phase = %s WHERE id = %s",
+            (mistake_type, tags, phase, mistake_id),
+        )
+
+
+def fetch_weakness_stats(user_id: str) -> list[dict[str, Any]]:
+    """
+    Aggregate weakness statistics: mistakes per 100 moves by type.
+    Returns rows ordered by rate descending.
+    """
+    try:
+        with get_conn() as conn:
+            rows = conn.execute(
+                """
+                WITH user_moves AS (
+                    SELECT count(*) as total_moves
+                    FROM moves mo
+                    JOIN games g ON mo.game_id = g.id
+                    WHERE g.user_id = %s
+                      AND g.analysis_status = 'done'
+                      AND mo.color = (
+                          CASE WHEN g.user_color = 'white' THEN 'white' ELSE 'black' END
+                      )
+                ),
+                mistake_counts AS (
+                    SELECT
+                        COALESCE(m.type, 'other') as type,
+                        m.phase,
+                        count(*) as count
+                    FROM mistakes m
+                    WHERE m.user_id = %s
+                    GROUP BY m.type, m.phase
+                )
+                SELECT
+                    mc.type,
+                    mc.phase,
+                    mc.count,
+                    ROUND(mc.count * 100.0 / NULLIF(um.total_moves, 0), 2) as rate_per_100
+                FROM mistake_counts mc, user_moves um
+                ORDER BY rate_per_100 DESC NULLS LAST
+                """,
+                (user_id, user_id),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except psycopg.errors.UndefinedTable:
+        return []
+
+
+def get_user_id_by_username(username: str) -> str | None:
+    """Get a user's ID by chess.com username."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM users WHERE chesscom_username = %s",
+            (username,),
+        ).fetchone()
+    return str(row["id"]) if row else None

@@ -207,3 +207,7 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
     # Enqueue puzzle generation and review for this game
     db.enqueue_job(user_id, game_id, "generate_puzzles")
     db.enqueue_job(user_id, game_id, "review_game")
+
+    # Reclassify mistakes with proper type heuristics (synchronous — fast)
+    from worker.reclassify import reclassify_game
+    reclassify_game(game_id)
