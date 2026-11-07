@@ -56,13 +56,19 @@ class JobService(private val jobRepository: JobRepository) {
         if (jobRepository.existsByGameIdAndKind(gameId, "analyze_game")) {
             return
         }
-
-        val job = JobEntity(
-            userId = userId,
-            gameId = gameId,
-            kind = "analyze_game",
-        )
+        val job = JobEntity(userId = userId, gameId = gameId, kind = "analyze_game")
         jobRepository.save(job)
         log.info("Enqueued analyze_game job for game {}", gameId)
+    }
+
+    /**
+     * Enqueue a review_game job. Multiple review jobs are allowed (for regeneration);
+     * the worker skips if a review already exists for the current model+version.
+     */
+    @Transactional
+    fun enqueueReview(userId: UUID, gameId: UUID) {
+        val job = JobEntity(userId = userId, gameId = gameId, kind = "review_game")
+        jobRepository.save(job)
+        log.info("Enqueued review_game job for game {}", gameId)
     }
 }
