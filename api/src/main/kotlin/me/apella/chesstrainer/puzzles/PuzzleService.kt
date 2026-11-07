@@ -20,10 +20,15 @@ class PuzzleService(
      * Get the next unsolved puzzle for a user.
      * Returns null if no more puzzles available.
      */
-    fun getNextPuzzle(username: String): PuzzleDto? {
+    fun getNextPuzzle(username: String, theme: String? = null): PuzzleDto? {
         val user = userService.findByUsername(username) ?: return null
         val pageable = org.springframework.data.domain.PageRequest.of(0, 1)
-        return puzzleRepository.findNextPuzzle(user.id!!, pageable).firstOrNull()?.toDto()
+        return puzzleRepository.findNextPuzzle(user.id!!, theme, pageable).firstOrNull()?.toDto()
+    }
+
+    fun getThemes(username: String): List<String> {
+        val user = userService.findByUsername(username) ?: return emptyList()
+        return puzzleRepository.findThemesByUserId(user.id!!)
     }
 
     /**

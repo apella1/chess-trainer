@@ -21,13 +21,18 @@ class PuzzlesController(private val puzzleService: PuzzleService) {
      * GET /api/puzzles/next?username=... — next unsolved puzzle for the user.
      */
     @GetMapping("/next")
-    fun getNextPuzzle(@RequestParam username: String): ResponseEntity<PuzzleDto> {
-        val puzzle = puzzleService.getNextPuzzle(username)
-        return if (puzzle != null) {
-            ResponseEntity.ok(puzzle)
-        } else {
-            ResponseEntity.noContent().build()
-        }
+    fun getNextPuzzle(
+        @RequestParam username: String,
+        @RequestParam(required = false) theme: String?,
+    ): ResponseEntity<PuzzleDto> {
+        val puzzle = puzzleService.getNextPuzzle(username, theme)
+        return if (puzzle != null) ResponseEntity.ok(puzzle)
+        else ResponseEntity.noContent().build()
+    }
+
+    @GetMapping("/themes")
+    fun getThemes(@RequestParam username: String): List<String> {
+        return puzzleService.getThemes(username)
     }
 
     /**
