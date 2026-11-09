@@ -1,7 +1,9 @@
 package me.apella.chesstrainer.puzzles
 
 import me.apella.chesstrainer.common.NotFoundException
+import me.apella.chesstrainer.practice.PracticeService
 import me.apella.chesstrainer.users.UserService
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -14,6 +16,7 @@ class PuzzleService(
     private val puzzleRepository: PuzzleRepository,
     private val attemptRepository: PuzzleAttemptRepository,
     private val userService: UserService,
+    @Lazy private val practiceService: PracticeService,
 ) {
 
     /**
@@ -65,6 +68,11 @@ class PuzzleService(
             hintsUsed = request.hintsUsed,
         )
 
-        return attemptRepository.save(attempt).toResponse()
+        val saved = attemptRepository.save(attempt)
+
+        // Update Leitner schedule
+        practiceService.updateSchedule(puzzleId, user.id!!, request.solved)
+
+        return saved.toResponse()
     }
 }

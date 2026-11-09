@@ -22,4 +22,16 @@ class StatsController(private val statsService: StatsService) {
     fun getWeaknesses(@RequestParam username: String): WeaknessesResponse {
         return statsService.getWeaknesses(username)
     }
+
+    /**
+     * GET /api/stats/trends?username=...&periods=6
+     * Mistake rates by type per month over the last N periods.
+     */
+    @GetMapping("/trends")
+    fun getTrends(
+        @RequestParam username: String,
+        @RequestParam(defaultValue = "6") periods: Int,
+    ): TrendsResponse {
+        return statsService.getTrends(username, periods)
+    }
 }

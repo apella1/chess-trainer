@@ -18,6 +18,20 @@ data class WeaknessesResponse(
     val weaknesses: List<WeaknessEntry>,
 )
 
+data class TrendPoint(
+    val period: String,
+    val type: String,
+    val count: Int,
+    val totalMoves: Int,
+    val ratePerHundred: Double,
+)
+
+data class TrendsResponse(
+    val username: String,
+    val periods: Int,
+    val trends: List<TrendPoint>,
+)
+
 @Service
 class StatsService(
     private val userService: UserService,
@@ -95,5 +109,56 @@ class StatsService(
             analyzedGames = analyzedGames,
             weaknesses = weaknesses,
         )
+    }
+
+    /**
+     * Trend data: mistake rates by type per rolling 2-week window.
+     * Groups analyzed games by the month they were played, computes
+     * mistake rate per 100 moves for each type per period.
+     */
+    fun getTrends(username: String, periods: Int = 6): TrendsResponse {
+        val user = userService.findByUsername(username)
+            ?: return TrendsResponse(username, 0, emptyList())
+
+        val userId = user.id!!
+
+        val rows = jdbcTemplate.queryForList(
+            """
+            SELECT
+                to_char(g.played_at, 'YYYY-MM') as period,
+                COALESCE(m.type, 'other') as type,
+                count(m.id) as mistake_count,
+                count(DISTINCT mo.id) as move_count
+            FROM games g
+            JOIN moves mo ON mo.game_id = g.id
+                AND mo.color = CASE WHEN g.user_color = 'white' THEN 'white' ELSE 'black' END
+            LEFT JOIN mistakes m ON m.game_id = g.id
+            WHERE g.user_id = ?
+              AND g.analysis_status = 'done'
+              AND g.played_at IS NOT NULL
+            GROUP BY period, type
+            ORDER BY period DESC, mistake_count DESC
+            """,
+            userId,
+        )
+
+        val distinctPeriods = rows.map { it["period"] as String }.distinct().take(periods)
+        val filtered = rows.filter { (it["period"] as String) in distinctPeriods }
+
+        val trends = filtered.map { row ->
+            val mistakeCount = (row["mistake_count"] as Number).toInt()
+            val moveCount = (row["move_count"] as Number).toInt()
+            TrendPoint(
+                period = row["period"] as String,
+                type = row["type"] as String,
+                count = mistakeCount,
+                totalMoves = moveCount,
+                ratePerHundred = if (moveCount > 0) {
+                    Math.round(mistakeCount * 100.0 / moveCount * 100) / 100.0
+                } else 0.0,
+            )
+        }
+
+        return TrendsResponse(username, distinctPeriods.size, trends)
     }
 }
