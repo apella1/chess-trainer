@@ -57,6 +57,8 @@ See `docs/architecture_overview.md` for details.
 
 | Document | Contents |
 |---|---|
+| [docs/plan.md](docs/plan.md) | Shared product scope, architecture, data model, and conventions |
+| [docs/plan/](docs/plan/) | Phase-by-phase deliverables, demos, and acceptance checks |
 | [docs/architecture_overview.md](docs/architecture_overview.md) | System design and key decisions |
 | [docs/data_model.md](docs/data_model.md) | All database tables and columns |
 | [docs/api_design.md](docs/api_design.md) | API endpoints and conventions |
@@ -71,29 +73,29 @@ See `docs/architecture_overview.md` for details.
 
 ## Build Status
 
-Phase 0 ✅ Walking skeleton
+Phase 0 ✅ [Walking skeleton](docs/plan/phase-0-walking-skeleton.md)
 - Docker Compose, Flyway V1, `/api/status`, worker heartbeat, Status page
 
-Phase 1 ✅ Game library
+Phase 1 ✅ [Game library](docs/plan/phase-1-game-library.md)
 - chess.com sync (incremental), PGN upload, games list with filters, PGN replay viewer
 - Tempo branding, board themes, click-through from landing page
 
-Phase 2 ✅ Engine analysis
+Phase 2 ✅ [Engine analysis](docs/plan/phase-2-engine-analysis.md)
 - Stockfish depth-14 analysis, win-probability classification (Lichess formula)
 - Moves, eval chart, mistake highlighting in game detail view
 - Job progress indicator, clock data from PGN
 
-Phase 3 ✅ Puzzles from your mistakes
+Phase 3 ✅ [Puzzles from your mistakes](docs/plan/phase-3-puzzles.md)
 - Quality filters (unique solution ≥15% gap, decided position exclusion, FEN dedup)
 - Theme grouping, click-to-move with valid square dots, drag-and-drop
 - Restart button, attempt persistence
 
-Phase 4 ✅ Local LLM game reviews
+Phase 4 ✅ [Local LLM game reviews](docs/plan/phase-4-game-reviews.md)
 - Facts package → Ollama (qwen3:8b) → structured JSON review with validation
 - ReviewPanel in game detail: summary, key moments, strengths, habit to fix
 - Regenerate button, model/prompt version badge
 
-Phase 5 (planned) — Level-aware weakness profile  
-Phase 6 (planned) — Deliberate practice loop  
-Phase 7 (planned) — Multi-user auth  
-Phase 8 (planned) — Extensions (Lichess puzzles, opening explorer)
+Phase 5 (planned) — [Level-aware weakness profile](docs/plan/phase-5-weakness-profile.md)
+Phase 6 (planned) — [Deliberate practice loop](docs/plan/phase-6-practice-loop.md)
+Phase 7 (planned) — [Multi-user auth](docs/plan/phase-7-multi-user.md)
+Phase 8 (planned) — [Extensions](docs/plan/phase-8-extensions.md)

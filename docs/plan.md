@@ -1,7 +1,7 @@
 Chess Trainer: Build Plan and Agent Context
 A personal chess training app built from your own chess.com games. Version 2 of the plan, written for a human reader and for an AI coding agent.
 1. How to use this document
-• This is the source of truth for scope, architecture, data model and phases. Export it as Markdown and commit it as docs/PLAN.md. Copy section 15 into AGENTS.md at the repo root.
+• This is the source of truth for scope, architecture, data model and shared project conventions. It lives at docs/plan.md; phase deliverables are in docs/plan/.
 • Build one phase at a time. Every phase ends in a runnable app (docker compose up), and no phase depends on a later one.
 • Where this document says verify, check current official docs (Spring Boot, Ollama, chess.com API, Stockfish packaging) instead of trusting memory.
 • Do not add dependencies, tables, endpoints or services that are not listed here without writing a short ADR in docs/adr/.
@@ -212,7 +212,8 @@ chess-trainer/
 ├── docker-compose.override.yml   # dev: Vite HMR, source mounts
 ├── .env.example
 ├── docs/
-│   ├── PLAN.md                   # this document
+│   ├── plan.md                   # shared plan context
+│   ├── plan/                     # one deliverables file per phase
 │   ├── data-model.md
 │   └── adr/                      # 0001-monorepo.md, ...
 ├── fixtures/
@@ -392,40 +393,17 @@ Routes: / (Status), /games, /games/:id, /train, /weaknesses, /sessions, /setting
 Key components: Board (react-chessboard with chess.js), MoveList (SAN with clock and classification badges), EvalChart (win probability per ply), ReviewPanel, PuzzleBoard (move entry, hint, retry, refutation display), JobProgress (polls /api/jobs/summary).
 Conventions: server state through TanStack Query only, polling intervals defined in one place, all API types in src/types mirrored from the DTOs, Vite proxies /api to api:8084 in dev.
 12. Phases
-Each phase is complete only when its acceptance checks pass and the app runs end to end from docker compose up.
-Phase 0: Walking skeleton
-• Build: repo scaffold and Makefile; Compose with postgres, api, worker, web; Flyway V1 creating users and service_heartbeats; API with actuator and /api/status; worker loop that writes a heartbeat every few seconds and checks Ollama reachability; Status page showing all four services and Ollama.
-• Demo: open the web app and see every service green, with last-heartbeat age for the worker.
-• Acceptance: cold docker compose up --build works from a clean checkout; migrations apply on an empty DB; make test and make lint pass; .env.example is complete.
-Phase 1: Game library
-• Build: sync feature (chess.com archives client: set a User-Agent, fetch archives sequentially, respect rate limits); games migration; PGN upload; list with filters; game viewer that replays the stored PGN client-side with chess.js; ECO and opening name taken from PGN headers.
-• Demo: enter a username, watch games appear, open one and step through it on the board.
-• Acceptance: re-sync adds only new games; malformed or empty months are handled; a PGN with clock comments loads; Testcontainers tests cover sync and idempotency using fixture JSON (no live network in tests).
-Phase 2: Engine analysis and mistake flagging
-• Build: analysis_jobs, moves, analysis_runs, move_evals, mistakes migrations; worker claim loop with reaper and retries; Stockfish wrapper; analysis pipeline; win-probability and severity classification; sync now enqueues one job per new game; UI shows job progress, an eval chart, and mistakes highlighted on the board and move list.
-• Demo: sync, watch progress, open an analyzed game and see where the blunders were.
-• Acceptance: a full account analyzes unattended; killing the worker mid-game and restarting resumes cleanly with no duplicate rows; fixture games produce the expected classifications in fixtures/expected/; clock data appears on moves.
-Phase 3: Puzzles from your mistakes
-• Build: puzzles and puzzle_attempts migrations; generate_puzzles job with the quality filters; /api/puzzles/next and attempts endpoint; Train page with move entry, hint, retry and refutation display.
-• Demo: solve puzzles drawn from your own games.
-• Acceptance: every puzzle has a clear unique solution by the filters; attempts persist; no puzzle comes from a decided position.
-Phase 4: Local LLM game reviews
-• Build: game_reviews migration; facts builder; Ollama client; schema validation and retry; review_game job; ReviewPanel with a regenerate button and a model/prompt version tag.
-• Demo: open any analyzed game and read its review.
-• Acceptance: every analyzed game has a stored review; changing OLLAMA_MODEL needs no code change; a deliberately corrupted LLM output is rejected by validation in a test.
-Phase 5: Level-aware weakness profile
-• Build: classify.py with the mistake types above; ECO dataset import; phase and time-pressure tagging; weakness aggregation by rate (mistakes per 100 moves) in stats; Weaknesses page; puzzle filter by type; optional Maia comparison to flag mistakes typical for the 1100 band; regenerate reviews with the richer facts (new prompt version).
-• Demo: a ranked list of your top weaknesses, each linking to its puzzles.
-• Acceptance: top-3 weaknesses are stable across a re-run; rates, not counts, drive the ranking; Maia is skipped cleanly if unavailable. Risk: running lc0 and Maia in an arm64 Linux container needs verifying, so treat Maia as optional.
-Phase 6: Deliberate practice loop
-• Build: review_schedule; Leitner-box scheduling in Kotlin (FSRS optional later); "20 minutes on my top 3 weaknesses" sessions; difficulty calibration toward 70-80% success; timed drills for time-pressure mistakes; trend view of per-category rate in new games.
-• Demo: a daily queue and a session summary.
-• Acceptance: failed puzzles return sooner than solved ones; session composition follows the weakness ranking; the trend chart answers whether a specific weakness is improving.
-Phase 7: Plug-and-play for other people
-• Build: Spring Security with simple local accounts; user_id filtering on every query; onboarding flow (username, waiting screen, dashboard); fair job scheduling across users; per-user rating-band calibration.
-• Acceptance: a second user onboards with no manual steps; user A can never read user B's data (covered by tests).
-Phase 8: Extensions
-Lichess puzzle supplementation by theme and rating band; opening explorer filtered to roughly 1000-1400 rated games; Lichess account import; LLM-written puzzle explanations; export and backups; GPL packaging review.
+Each phase is complete only when its acceptance checks pass and the app runs end to end from docker compose up. The full phase deliverables, demos, and acceptance checks are maintained separately:
+
+• [Phase 0: Walking skeleton](plan/phase-0-walking-skeleton.md)
+• [Phase 1: Game library](plan/phase-1-game-library.md)
+• [Phase 2: Engine analysis and mistake flagging](plan/phase-2-engine-analysis.md)
+• [Phase 3: Puzzles from your mistakes](plan/phase-3-puzzles.md)
+• [Phase 4: Local LLM game reviews](plan/phase-4-game-reviews.md)
+• [Phase 5: Level-aware weakness profile](plan/phase-5-weakness-profile.md)
+• [Phase 6: Deliberate practice loop](plan/phase-6-practice-loop.md)
+• [Phase 7: Plug-and-play for other people](plan/phase-7-multi-user.md)
+• [Phase 8: Extensions](plan/phase-8-extensions.md)
 13. Testing strategy
 • API: Testcontainers Postgres, one base test class, fixtures for chess.com JSON. No live network.
 • Worker: pytest with fixture PGNs and low-depth Stockfish for determinism; unit tests for winprob, classify and puzzle filters; LLM tests use recorded and deliberately broken outputs.
@@ -438,7 +416,7 @@ Lichess puzzle supplementation by theme and rating band; opening explorer filter
 • Logging: structured, one line per job transition, with job id and game id.
 • Commits: small, one logical change each, referencing the phase (for example phase-2: add stockfish wrapper).
 15. Agent working agreement (copy into AGENTS.md)
-1. Read docs/PLAN.md before starting. Work on exactly one phase at a time and do not build ahead.
+1. Read docs/plan.md and the current phase file in docs/plan/ before starting. Work on exactly one phase at a time and do not build ahead.
 2. Respect the decisions in section 3. If a task seems to require breaking one, stop and write an ADR instead of working around it.
 3. Only Flyway migrations in api/ change the schema. Never edit an applied migration; add a new one.
 4. The worker's SQL lives in worker/src/worker/db.py only.
