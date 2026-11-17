@@ -99,3 +99,5 @@ Phase 5 (planned) — [Level-aware weakness profile](docs/plan/phase-5-weakness-
 Phase 6 (planned) — [Deliberate practice loop](docs/plan/phase-6-practice-loop.md)
 Phase 7 (planned) — [Multi-user auth](docs/plan/phase-7-multi-user.md)
 Phase 8 (planned) — [Extensions](docs/plan/phase-8-extensions.md)
+Phase 9 (planned) — [Guided first-value onboarding](docs/plan/phase-9-first-value.md)
+Phase 10 (planned) — [Evidence-based improvement loop](docs/plan/phase-10-improvement-loop.md)

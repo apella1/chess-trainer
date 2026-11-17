@@ -24,6 +24,7 @@ Success metrics:
 • Puzzle success rate stays between 70% and 80%.
 • Blunder rate per 100 moves in the top weakness categories falls over 6-8 weeks of real games.
 • A new user can onboard with only a username and no manual steps.
+The complete value chain is: import the player's games, explain their level-relevant mistakes, turn recurring weaknesses into practice, and show whether those weaknesses are becoming less frequent in later games. Progress reporting must show the amount of evidence and avoid claiming that practice alone caused a change.
 Non-goals (for now): playing games, writing a chess engine, mobile apps, Rust, real-time analysis during live games, paid tiers.
 3. Design decisions (each is an ADR seed)
 1. Monorepo. One repo, one docker compose up, one commit for cross-cutting changes.
@@ -404,6 +405,8 @@ Each phase is complete only when its acceptance checks pass and the app runs end
 • [Phase 6: Deliberate practice loop](plan/phase-6-practice-loop.md)
 • [Phase 7: Plug-and-play for other people](plan/phase-7-multi-user.md)
 • [Phase 8: Extensions](plan/phase-8-extensions.md)
+• [Phase 9: Guided first-value onboarding](plan/phase-9-first-value.md)
+• [Phase 10: Evidence-based improvement loop](plan/phase-10-improvement-loop.md)
 13. Testing strategy
 • API: Testcontainers Postgres, one base test class, fixtures for chess.com JSON. No live network.
 • Worker: pytest with fixture PGNs and low-depth Stockfish for determinism; unit tests for winprob, classify and puzzle filters; LLM tests use recorded and deliberately broken outputs.
