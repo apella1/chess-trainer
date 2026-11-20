@@ -57,3 +57,10 @@ allOpen {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+ktlint {
+    version.set("1.5.0")
+    filter {
+        exclude { it.file.path.contains("src/test/") }
+    }
+}

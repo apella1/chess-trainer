@@ -14,14 +14,17 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/api/games/{gameId}/review")
-class ReviewsController(private val reviewService: ReviewService) {
-
+class ReviewsController(
+    private val reviewService: ReviewService,
+) {
     /**
      * GET /api/games/{gameId}/review — latest stored review.
      * Returns 204 if no review exists yet.
      */
     @GetMapping
-    fun getReview(@PathVariable gameId: UUID): ResponseEntity<ReviewDto> {
+    fun getReview(
+        @PathVariable gameId: UUID,
+    ): ResponseEntity<ReviewDto> {
         val review = reviewService.getLatestReview(gameId)
         return if (review != null) {
             ResponseEntity.ok(review)
@@ -35,9 +38,12 @@ class ReviewsController(private val reviewService: ReviewService) {
      * Returns 202 Accepted.
      */
     @PostMapping("/regenerate")
-    fun regenerateReview(@PathVariable gameId: UUID): ResponseEntity<Map<String, String>> {
+    fun regenerateReview(
+        @PathVariable gameId: UUID,
+    ): ResponseEntity<Map<String, String>> {
         reviewService.enqueueReview(gameId)
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
+        return ResponseEntity
+            .status(HttpStatus.ACCEPTED)
             .body(mapOf("message" to "Review generation queued for game $gameId"))
     }
 }

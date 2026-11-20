@@ -21,11 +21,9 @@ class SyncedArchive(
     @Id
     @Column(name = "user_id")
     val userId: UUID,
-
     @Id
     @Column(name = "archive_url")
     val archiveUrl: String,
-
     @Column(name = "synced_at")
     val syncedAt: Instant = Instant.now(),
 )

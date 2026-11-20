@@ -17,26 +17,19 @@ class PracticeSessionEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     val id: UUID? = null,
-
     @Column(name = "user_id", nullable = false)
     val userId: UUID,
-
     @Column(name = "started_at", nullable = false)
     val startedAt: Instant = Instant.now(),
-
     @Column(name = "finished_at")
     var finishedAt: Instant? = null,
-
     @Column(name = "puzzles_total", nullable = false)
     var puzzlesTotal: Int = 0,
-
     @Column(name = "puzzles_solved", nullable = false)
     var puzzlesSolved: Int = 0,
-
     @Column(name = "focus_types", nullable = false, columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     var focusTypes: List<String> = emptyList(),
-
     @Column(name = "duration_ms")
     var durationMs: Long? = null,
 )

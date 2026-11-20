@@ -55,35 +55,37 @@ data class GameUploadResponse(
     val message: String,
 )
 
-fun GameEntity.toSummary() = GameSummaryDto(
-    id = id!!,
-    playedAt = playedAt,
-    timeClass = timeClass,
-    timeControl = timeControl,
-    userColor = userColor,
-    result = result,
-    userRating = userRating,
-    oppRating = oppRating,
-    oppUsername = oppUsername,
-    eco = eco,
-    openingName = openingName,
-    analysisStatus = analysisStatus,
-)
+fun GameEntity.toSummary() =
+    GameSummaryDto(
+        id = id!!,
+        playedAt = playedAt,
+        timeClass = timeClass,
+        timeControl = timeControl,
+        userColor = userColor,
+        result = result,
+        userRating = userRating,
+        oppRating = oppRating,
+        oppUsername = oppUsername,
+        eco = eco,
+        openingName = openingName,
+        analysisStatus = analysisStatus,
+    )
 
-fun GameEntity.toDetail(moves: List<MoveWithEval> = emptyList()) = GameDetailDto(
-    id = id!!,
-    playedAt = playedAt,
-    timeClass = timeClass,
-    timeControl = timeControl,
-    userColor = userColor,
-    result = result,
-    termination = termination,
-    userRating = userRating,
-    oppRating = oppRating,
-    oppUsername = oppUsername,
-    eco = eco,
-    openingName = openingName,
-    pgn = pgn,
-    analysisStatus = analysisStatus,
-    moves = moves,
-)
+fun GameEntity.toDetail(moves: List<MoveWithEval> = emptyList()) =
+    GameDetailDto(
+        id = id!!,
+        playedAt = playedAt,
+        timeClass = timeClass,
+        timeControl = timeControl,
+        userColor = userColor,
+        result = result,
+        termination = termination,
+        userRating = userRating,
+        oppRating = oppRating,
+        oppUsername = oppUsername,
+        eco = eco,
+        openingName = openingName,
+        pgn = pgn,
+        analysisStatus = analysisStatus,
+        moves = moves,
+    )

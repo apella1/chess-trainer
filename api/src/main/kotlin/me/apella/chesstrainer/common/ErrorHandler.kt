@@ -16,39 +16,47 @@ data class ApiError(
     val timestamp: Instant = Instant.now(),
 )
 
-class NotFoundException(message: String) : RuntimeException(message)
+class NotFoundException(
+    message: String,
+) : RuntimeException(message)
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
-
     private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(NotFoundException::class)
-    fun handleNotFound(ex: NotFoundException, request: HttpServletRequest): ResponseEntity<ApiError> {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+    fun handleNotFound(
+        ex: NotFoundException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ApiError> =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(
             ApiError(
                 status = 404,
                 error = "Not Found",
                 message = ex.message ?: "Resource not found",
                 path = request.requestURI,
-            )
+            ),
         )
-    }
 
     @ExceptionHandler(IllegalArgumentException::class)
-    fun handleBadRequest(ex: IllegalArgumentException, request: HttpServletRequest): ResponseEntity<ApiError> {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+    fun handleBadRequest(
+        ex: IllegalArgumentException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ApiError> =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             ApiError(
                 status = 400,
                 error = "Bad Request",
                 message = ex.message ?: "Invalid request",
                 path = request.requestURI,
-            )
+            ),
         )
-    }
 
     @ExceptionHandler(Exception::class)
-    fun handleGeneral(ex: Exception, request: HttpServletRequest): ResponseEntity<ApiError> {
+    fun handleGeneral(
+        ex: Exception,
+        request: HttpServletRequest,
+    ): ResponseEntity<ApiError> {
         log.error("Unhandled exception on ${request.method} ${request.requestURI}", ex)
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
             ApiError(
@@ -56,7 +64,7 @@ class GlobalExceptionHandler {
                 error = "Internal Server Error",
                 message = "An unexpected error occurred",
                 path = request.requestURI,
-            )
+            ),
         )
     }
 }

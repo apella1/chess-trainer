@@ -15,16 +15,12 @@ class UserEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     val id: UUID? = null,
-
     @Column(name = "chesscom_username", unique = true, nullable = false)
     val chesscomUsername: String,
-
     @Column(name = "display_name", nullable = false)
     val displayName: String,
-
     @Column(name = "rating_band")
     var ratingBand: Int? = null,
-
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 )

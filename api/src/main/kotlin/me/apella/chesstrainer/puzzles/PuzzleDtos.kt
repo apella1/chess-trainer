@@ -31,18 +31,20 @@ data class PuzzleSolutionDto(
     val solutionUci: List<String>,
 )
 
-fun PuzzleEntity.toDto() = PuzzleDto(
-    id = id!!,
-    fen = fen,
-    sideToMove = sideToMove,
-    solutionLength = solutionUci.size,
-    themes = themes,
-    source = source,
-)
+fun PuzzleEntity.toDto() =
+    PuzzleDto(
+        id = id!!,
+        fen = fen,
+        sideToMove = sideToMove,
+        solutionLength = solutionUci.size,
+        themes = themes,
+        source = source,
+    )
 
-fun PuzzleAttemptEntity.toResponse() = AttemptResponse(
-    id = id!!,
-    puzzleId = puzzleId,
-    solved = solved,
-    attemptedAt = attemptedAt,
-)
+fun PuzzleAttemptEntity.toResponse() =
+    AttemptResponse(
+        id = id!!,
+        puzzleId = puzzleId,
+        solved = solved,
+        attemptedAt = attemptedAt,
+    )

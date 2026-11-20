@@ -7,7 +7,6 @@ import java.util.UUID
 
 @Repository
 interface JobRepository : JpaRepository<JobEntity, UUID> {
-
     /**
      * Count jobs grouped by status and kind.
      * Returns rows of [status, kind, count].
@@ -25,7 +24,10 @@ interface JobRepository : JpaRepository<JobEntity, UUID> {
      * Check if an analyze_game job already exists for a game.
      * Used by sync to avoid enqueuing duplicate jobs.
      */
-    fun existsByGameIdAndKind(gameId: UUID, kind: String): Boolean
+    fun existsByGameIdAndKind(
+        gameId: UUID,
+        kind: String,
+    ): Boolean
 
     /**
      * Get job counts grouped by status and kind.

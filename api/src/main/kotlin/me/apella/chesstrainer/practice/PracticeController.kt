@@ -14,16 +14,17 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/sessions")
-class PracticeController(private val practiceService: PracticeService) {
-
+class PracticeController(
+    private val practiceService: PracticeService,
+) {
     /**
      * GET /api/sessions/today?username=...
      * Returns today's practice queue: due reviews + new puzzles up to SESSION_SIZE.
      */
     @GetMapping("/today")
-    fun getTodayQueue(@RequestParam username: String): DailyQueueResponse {
-        return practiceService.getTodayQueue(username)
-    }
+    fun getTodayQueue(
+        @RequestParam username: String,
+    ): DailyQueueResponse = practiceService.getTodayQueue(username)
 
     /**
      * POST /api/sessions?username=...
@@ -46,7 +47,5 @@ class PracticeController(private val practiceService: PracticeService) {
     fun getRecentSessions(
         @RequestParam username: String,
         @RequestParam(defaultValue = "14") days: Int,
-    ): List<PracticeSessionDto> {
-        return practiceService.getRecentSessions(username, days)
-    }
+    ): List<PracticeSessionDto> = practiceService.getRecentSessions(username, days)
 }

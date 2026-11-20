@@ -9,7 +9,6 @@ package me.apella.chesstrainer.common
  * Does not parse movetext — that is done client-side by chess.js in the UI.
  */
 object PgnHeaders {
-
     private val HEADER_PATTERN = Regex("""^\[(\w+)\s+"(.*)"\]\s*$""")
 
     /**
@@ -39,7 +38,10 @@ object PgnHeaders {
     /**
      * Extract a single header value, or null if not present.
      */
-    fun get(pgn: String, key: String): String? = parse(pgn)[key]
+    fun get(
+        pgn: String,
+        key: String,
+    ): String? = parse(pgn)[key]
 
     /**
      * Split a multi-game PGN file into individual game strings.

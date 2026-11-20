@@ -21,8 +21,9 @@ data class JobSummaryResponse(
  */
 @RestController
 @RequestMapping("/api/jobs")
-class JobsController(private val jobService: JobService) {
-
+class JobsController(
+    private val jobService: JobService,
+) {
     /**
      * GET /api/jobs/summary — counts by status and kind.
      */

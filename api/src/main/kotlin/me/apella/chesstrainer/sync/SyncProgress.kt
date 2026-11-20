@@ -11,7 +11,7 @@ import java.util.UUID
 data class SyncProgress(
     val id: UUID = UUID.randomUUID(),
     val username: String,
-    var status: String = "running",  // running | done | failed
+    var status: String = "running", // running | done | failed
     var archivesTotal: Int = 0,
     var archivesProcessed: Int = 0,
     var gamesFound: Int = 0,

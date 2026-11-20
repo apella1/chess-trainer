@@ -8,7 +8,12 @@ data class PagedResponse<T>(
     val totalPages: Int,
 ) {
     companion object {
-        fun <T> of(content: List<T>, page: Int, size: Int, totalElements: Long): PagedResponse<T> {
+        fun <T> of(
+            content: List<T>,
+            page: Int,
+            size: Int,
+            totalElements: Long,
+        ): PagedResponse<T> {
             val totalPages = if (totalElements == 0L) 0 else ((totalElements + size - 1) / size).toInt()
             return PagedResponse(
                 content = content,

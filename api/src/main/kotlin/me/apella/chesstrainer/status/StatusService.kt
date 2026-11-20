@@ -6,7 +6,7 @@ import java.time.Duration
 import java.time.Instant
 
 data class WorkerStatus(
-    val status: String,           // "ok" | "stale" | "down"
+    val status: String, // "ok" | "stale" | "down"
     val lastSeenSeconds: Long?,
     val details: Map<String, Any>,
 )
@@ -20,7 +20,7 @@ data class WorkerStatus(
  * This prevents confusing "Ollama is fine" when reviews would actually fail.
  */
 data class OllamaStatus(
-    val status: String,           // "ok" | "down" | "model_not_ready" | "unknown"
+    val status: String, // "ok" | "down" | "model_not_ready" | "unknown"
     val model: String?,
     val detail: String?,
 )
@@ -37,7 +37,6 @@ class StatusService(
     private val heartbeatRepository: HeartbeatRepository,
     private val jdbcTemplate: JdbcTemplate,
 ) {
-
     fun getStatus(): StatusResponse {
         val dbStatus = checkDatabase()
         val workerStatus = checkWorker()
@@ -51,27 +50,28 @@ class StatusService(
         )
     }
 
-    private fun checkDatabase(): String {
-        return try {
+    private fun checkDatabase(): String =
+        try {
             jdbcTemplate.queryForObject("SELECT 1", Int::class.java)
             "ok"
         } catch (ex: Exception) {
             "down"
         }
-    }
 
     private fun checkWorker(): WorkerStatus {
-        val heartbeat = heartbeatRepository.findLatestForService("worker")
-            ?: return WorkerStatus(status = "down", lastSeenSeconds = null, details = emptyMap())
+        val heartbeat =
+            heartbeatRepository.findLatestForService("worker")
+                ?: return WorkerStatus(status = "down", lastSeenSeconds = null, details = emptyMap())
 
         val age = Duration.between(heartbeat.lastSeen, Instant.now())
         val ageSeconds = age.seconds
 
-        val status = when {
-            ageSeconds <= 30 -> "ok"
-            ageSeconds <= 300 -> "stale"
-            else -> "down"
-        }
+        val status =
+            when {
+                ageSeconds <= 30 -> "ok"
+                ageSeconds <= 300 -> "stale"
+                else -> "down"
+            }
 
         return WorkerStatus(
             status = status,
@@ -95,8 +95,9 @@ class StatusService(
             return OllamaStatus(status = "unknown", model = null, detail = "Worker is down; cannot determine Ollama status")
         }
 
-        val reachable = worker.details["ollamaReachable"] as? Boolean
-            ?: return OllamaStatus(status = "unknown", model = null, detail = "No Ollama data in heartbeat")
+        val reachable =
+            worker.details["ollamaReachable"] as? Boolean
+                ?: return OllamaStatus(status = "unknown", model = null, detail = "No Ollama data in heartbeat")
 
         val model = worker.details["ollamaModel"] as? String
 
@@ -115,7 +116,9 @@ class StatusService(
             OllamaStatus(
                 status = "model_not_ready",
                 model = model,
-                detail = "Ollama is running but the model is not yet downloaded. LLM reviews will be unavailable until the download completes.",
+                detail =
+                    "Ollama is running but the model is not yet downloaded. " +
+                        "LLM reviews will be unavailable until the download completes.",
             )
         }
     }

@@ -7,10 +7,9 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/status")
-class StatusController(private val statusService: StatusService) {
-
+class StatusController(
+    private val statusService: StatusService,
+) {
     @GetMapping
-    fun getStatus(): ResponseEntity<StatusResponse> {
-        return ResponseEntity.ok(statusService.getStatus())
-    }
+    fun getStatus(): ResponseEntity<StatusResponse> = ResponseEntity.ok(statusService.getStatus())
 }

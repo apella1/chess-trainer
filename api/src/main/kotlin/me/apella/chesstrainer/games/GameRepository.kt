@@ -10,7 +10,6 @@ import java.util.UUID
 
 @Repository
 interface GameRepository : JpaRepository<GameEntity, UUID> {
-
     /**
      * List games for a user with optional filters.
      * Null filters are ignored (not applied).
@@ -65,5 +64,7 @@ interface GameRepository : JpaRepository<GameEntity, UUID> {
         ORDER BY m.ply
         """,
     )
-    fun findMovesWithEvals(@Param("gameId") gameId: UUID): List<MoveWithEval>
+    fun findMovesWithEvals(
+        @Param("gameId") gameId: UUID,
+    ): List<MoveWithEval>
 }

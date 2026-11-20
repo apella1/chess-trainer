@@ -9,7 +9,6 @@ import java.util.UUID
 
 @Repository
 interface PuzzleRepository : JpaRepository<PuzzleEntity, UUID> {
-
     /**
      * Distinct themes across all active puzzles for a user.
      * Uses a native query to unnest the JSONB array.
@@ -23,7 +22,9 @@ interface PuzzleRepository : JpaRepository<PuzzleEntity, UUID> {
         """,
         nativeQuery = true,
     )
-    fun findThemesByUserId(@Param("userId") userId: UUID): List<String>
+    fun findThemesByUserId(
+        @Param("userId") userId: UUID,
+    ): List<String>
 
     /**
      * Find the next unsolved puzzle for a user, optionally filtered by theme.
@@ -51,6 +52,8 @@ interface PuzzleRepository : JpaRepository<PuzzleEntity, UUID> {
 
 @Repository
 interface PuzzleAttemptRepository : JpaRepository<PuzzleAttemptEntity, UUID> {
-
-    fun countByPuzzleIdAndUserId(puzzleId: UUID, userId: UUID): Long
+    fun countByPuzzleIdAndUserId(
+        puzzleId: UUID,
+        userId: UUID,
+    ): Long
 }

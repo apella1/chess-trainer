@@ -18,14 +18,18 @@ class PuzzleService(
     private val userService: UserService,
     @Lazy private val practiceService: PracticeService,
 ) {
-
     /**
      * Get the next unsolved puzzle for a user.
      * Returns null if no more puzzles available.
      */
-    fun getNextPuzzle(username: String, theme: String? = null): PuzzleDto? {
+    fun getNextPuzzle(
+        username: String,
+        theme: String? = null,
+    ): PuzzleDto? {
         val user = userService.findByUsername(username) ?: return null
-        val pageable = org.springframework.data.domain.PageRequest.of(0, 1)
+        val pageable =
+            org.springframework.data.domain.PageRequest
+                .of(0, 1)
         return puzzleRepository.findNextPuzzle(user.id!!, theme, pageable).firstOrNull()?.toDto()
     }
 
@@ -38,8 +42,10 @@ class PuzzleService(
      * Get the solution for a puzzle (for refutation display after solving).
      */
     fun getSolution(puzzleId: UUID): PuzzleSolutionDto {
-        val puzzle = puzzleRepository.findById(puzzleId)
-            .orElseThrow { NotFoundException("Puzzle $puzzleId not found") }
+        val puzzle =
+            puzzleRepository
+                .findById(puzzleId)
+                .orElseThrow { NotFoundException("Puzzle $puzzleId not found") }
         return PuzzleSolutionDto(puzzleId, puzzle.solutionUci)
     }
 
@@ -47,26 +53,34 @@ class PuzzleService(
      * Record a puzzle attempt. Idempotent per user — one attempt per puzzle per user.
      */
     @Transactional
-    fun recordAttempt(puzzleId: UUID, username: String, request: AttemptRequest): AttemptResponse {
-        val user = userService.findByUsername(username)
-            ?: throw NotFoundException("User $username not found")
+    fun recordAttempt(
+        puzzleId: UUID,
+        username: String,
+        request: AttemptRequest,
+    ): AttemptResponse {
+        val user =
+            userService.findByUsername(username)
+                ?: throw NotFoundException("User $username not found")
 
-        val puzzle = puzzleRepository.findById(puzzleId)
-            .orElseThrow { NotFoundException("Puzzle $puzzleId not found") }
+        val puzzle =
+            puzzleRepository
+                .findById(puzzleId)
+                .orElseThrow { NotFoundException("Puzzle $puzzleId not found") }
 
         // Check if already attempted
         if (attemptRepository.countByPuzzleIdAndUserId(puzzleId, user.id!!) > 0) {
             throw IllegalStateException("Puzzle already attempted")
         }
 
-        val attempt = PuzzleAttemptEntity(
-            puzzleId = puzzleId,
-            userId = user.id!!,
-            solved = request.solved,
-            movesTried = request.movesTried,
-            timeMs = request.timeMs,
-            hintsUsed = request.hintsUsed,
-        )
+        val attempt =
+            PuzzleAttemptEntity(
+                puzzleId = puzzleId,
+                userId = user.id!!,
+                solved = request.solved,
+                movesTried = request.movesTried,
+                timeMs = request.timeMs,
+                hintsUsed = request.hintsUsed,
+            )
 
         val saved = attemptRepository.save(attempt)
 

@@ -9,7 +9,6 @@ import java.util.UUID
 
 @Repository
 interface ReviewScheduleRepository : JpaRepository<ReviewScheduleEntity, ReviewScheduleId> {
-
     /**
      * Puzzles due for review now, ordered by box ascending (lowest box = most urgent).
      * Capped at limit.
@@ -23,18 +22,26 @@ interface ReviewScheduleRepository : JpaRepository<ReviewScheduleEntity, ReviewS
         """,
         nativeQuery = true,
     )
-    fun findDue(@Param("userId") userId: UUID, @Param("limit") limit: Int): List<ReviewScheduleEntity>
+    fun findDue(
+        @Param("userId") userId: UUID,
+        @Param("limit") limit: Int,
+    ): List<ReviewScheduleEntity>
 
-    fun findByPuzzleIdAndUserId(puzzleId: UUID, userId: UUID): ReviewScheduleEntity?
+    fun findByPuzzleIdAndUserId(
+        puzzleId: UUID,
+        userId: UUID,
+    ): ReviewScheduleEntity?
 }
 
 @Repository
 interface PracticeSessionRepository : JpaRepository<PracticeSessionEntity, UUID> {
-
     fun findFirstByUserIdOrderByStartedAtDesc(userId: UUID): PracticeSessionEntity?
 
     @Query(
         "SELECT s FROM PracticeSessionEntity s WHERE s.userId = :userId AND s.startedAt >= :since ORDER BY s.startedAt DESC",
     )
-    fun findByUserIdSince(@Param("userId") userId: UUID, @Param("since") since: Instant): List<PracticeSessionEntity>
+    fun findByUserIdSince(
+        @Param("userId") userId: UUID,
+        @Param("since") since: Instant,
+    ): List<PracticeSessionEntity>
 }

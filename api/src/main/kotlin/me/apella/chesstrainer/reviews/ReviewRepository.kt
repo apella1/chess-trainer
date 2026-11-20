@@ -6,6 +6,5 @@ import java.util.UUID
 
 @Repository
 interface ReviewRepository : JpaRepository<ReviewEntity, UUID> {
-
     fun findFirstByGameIdOrderByCreatedAtDesc(gameId: UUID): ReviewEntity?
 }

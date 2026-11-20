@@ -20,22 +20,20 @@ class UsersController(
     private val userService: UserService,
     private val gameService: GameService,
 ) {
-
     /**
      * GET /api/users — list all synced users with their game counts.
      * Only shows users who have at least one synced game.
      */
     @GetMapping
-    fun listUsers(): List<UserSummary> {
-        return userService.findAll()
+    fun listUsers(): List<UserSummary> =
+        userService
+            .findAll()
             .map { user ->
                 UserSummary(
                     username = user.chesscomUsername,
                     displayName = user.displayName,
                     gameCount = gameService.countGamesByUserId(user.id!!),
                 )
-            }
-            .filter { it.gameCount > 0 }
+            }.filter { it.gameCount > 0 }
             .sortedByDescending { it.gameCount }
-    }
 }

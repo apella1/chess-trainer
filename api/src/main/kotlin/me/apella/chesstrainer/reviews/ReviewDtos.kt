@@ -14,13 +14,14 @@ data class ReviewDto(
     val createdAt: Instant,
 )
 
-fun ReviewEntity.toDto() = ReviewDto(
-    id = id!!,
-    gameId = gameId,
-    model = model,
-    promptVersion = promptVersion,
-    reviewText = reviewText,
-    reviewJson = reviewJson,
-    validationStatus = validationStatus,
-    createdAt = createdAt,
-)
+fun ReviewEntity.toDto() =
+    ReviewDto(
+        id = id!!,
+        gameId = gameId,
+        model = model,
+        promptVersion = promptVersion,
+        reviewText = reviewText,
+        reviewJson = reviewJson,
+        validationStatus = validationStatus,
+        createdAt = createdAt,
+    )

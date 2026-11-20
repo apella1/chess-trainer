@@ -7,11 +7,13 @@ import java.util.UUID
 
 @Repository
 interface SyncedArchiveRepository : JpaRepository<SyncedArchive, SyncedArchiveId> {
-
     /**
      * Check if an archive URL has already been synced for a user.
      */
-    fun existsByUserIdAndArchiveUrl(userId: UUID, archiveUrl: String): Boolean
+    fun existsByUserIdAndArchiveUrl(
+        userId: UUID,
+        archiveUrl: String,
+    ): Boolean
 
     /**
      * Find all synced archive URLs for a user, ordered by URL (which is chronological

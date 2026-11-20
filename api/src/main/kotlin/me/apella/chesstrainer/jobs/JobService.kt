@@ -6,8 +6,9 @@ import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
-class JobService(private val jobRepository: JobRepository) {
-
+class JobService(
+    private val jobRepository: JobRepository,
+) {
     private val log = LoggerFactory.getLogger(JobService::class.java)
 
     /**
@@ -37,13 +38,14 @@ class JobService(private val jobRepository: JobRepository) {
         }
 
         return JobSummaryResponse(
-            total = JobSummary(
-                pending = pending,
-                running = running,
-                done = done,
-                failed = failed,
-                byKind = byKind.mapValues { it.value.toMap() },
-            ),
+            total =
+                JobSummary(
+                    pending = pending,
+                    running = running,
+                    done = done,
+                    failed = failed,
+                    byKind = byKind.mapValues { it.value.toMap() },
+                ),
         )
     }
 
@@ -52,7 +54,10 @@ class JobService(private val jobRepository: JobRepository) {
      * Idempotent: safe to call multiple times for the same game.
      */
     @Transactional
-    fun enqueueAnalysis(userId: UUID, gameId: UUID) {
+    fun enqueueAnalysis(
+        userId: UUID,
+        gameId: UUID,
+    ) {
         if (jobRepository.existsByGameIdAndKind(gameId, "analyze_game")) {
             return
         }
@@ -66,8 +71,17 @@ class JobService(private val jobRepository: JobRepository) {
      * the worker skips if a review already exists for the current model+version.
      */
     @Transactional
-    fun enqueueReview(userId: UUID, gameId: UUID) {
-        val job = JobEntity(userId = userId, gameId = gameId, kind = "review_game")
+    fun enqueueReview(
+        userId: UUID,
+        gameId: UUID,
+    ) {
+        val job =
+            JobEntity(
+                userId = userId,
+                gameId = gameId,
+                kind = "review_game",
+                payload = mapOf("regenerate" to true),
+            )
         jobRepository.save(job)
         log.info("Enqueued review_game job for game {}", gameId)
     }

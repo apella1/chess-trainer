@@ -25,13 +25,10 @@ data class HeartbeatId(
 class ServiceHeartbeat(
     @Id
     val service: String,
-
     @Id
     val instance: String,
-
     @Column(name = "last_seen")
     val lastSeen: Instant = Instant.now(),
-
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     val details: Map<String, Any> = emptyMap(),
@@ -39,7 +36,6 @@ class ServiceHeartbeat(
 
 @Repository
 interface HeartbeatRepository : JpaRepository<ServiceHeartbeat, HeartbeatId> {
-
     @Query(
         """
         SELECT h FROM ServiceHeartbeat h

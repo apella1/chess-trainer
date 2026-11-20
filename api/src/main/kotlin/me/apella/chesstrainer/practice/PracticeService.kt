@@ -15,13 +15,14 @@ import java.util.UUID
  * Box 1 = same day, Box 2 = 1 day, ..., Box 5 = 16 days.
  * Failed puzzles return to Box 1.
  */
-private val BOX_INTERVALS_HOURS = mapOf(
-    1 to 0L,
-    2 to 24L,
-    3 to 72L,
-    4 to 192L,
-    5 to 384L,
-)
+private val BOX_INTERVALS_HOURS =
+    mapOf(
+        1 to 0L,
+        2 to 24L,
+        3 to 72L,
+        4 to 192L,
+        5 to 384L,
+    )
 
 /** Target session size (number of puzzles). */
 private const val SESSION_SIZE = 10
@@ -34,7 +35,6 @@ class PracticeService(
     private val attemptRepository: PuzzleAttemptRepository,
     private val userService: UserService,
 ) {
-
     /**
      * Get today's practice queue for a user.
      *
@@ -45,8 +45,9 @@ class PracticeService(
      * Returns puzzle IDs in priority order.
      */
     fun getTodayQueue(username: String): DailyQueueResponse {
-        val user = userService.findByUsername(username)
-            ?: return DailyQueueResponse(username, emptyList(), 0, 0)
+        val user =
+            userService.findByUsername(username)
+                ?: return DailyQueueResponse(username, emptyList(), 0, 0)
 
         val userId = user.id!!
 
@@ -56,13 +57,15 @@ class PracticeService(
 
         // Fill remaining slots with new puzzles (not in schedule yet)
         val remaining = SESSION_SIZE - dueReviews.size
-        val newPuzzles = if (remaining > 0) {
-            puzzleRepository.findNextPuzzle(userId, null, PageRequest.of(0, remaining))
-                .filter { it.id !in duePuzzleIds }
-                .take(remaining)
-        } else {
-            emptyList()
-        }
+        val newPuzzles =
+            if (remaining > 0) {
+                puzzleRepository
+                    .findNextPuzzle(userId, null, PageRequest.of(0, remaining))
+                    .filter { it.id !in duePuzzleIds }
+                    .take(remaining)
+            } else {
+                emptyList()
+            }
 
         val allPuzzleIds = duePuzzleIds + newPuzzles.mapNotNull { it.id }
 
@@ -71,7 +74,7 @@ class PracticeService(
             val puzzleId = puzzle.id ?: continue
             if (reviewScheduleRepository.findByPuzzleIdAndUserId(puzzleId, userId) == null) {
                 reviewScheduleRepository.save(
-                    ReviewScheduleEntity(puzzleId = puzzleId, userId = userId)
+                    ReviewScheduleEntity(puzzleId = puzzleId, userId = userId),
                 )
             }
         }
@@ -92,9 +95,14 @@ class PracticeService(
      * Failed: reset to box 1, due immediately.
      */
     @Transactional
-    fun updateSchedule(puzzleId: UUID, userId: UUID, solved: Boolean) {
-        val schedule = reviewScheduleRepository.findByPuzzleIdAndUserId(puzzleId, userId)
-            ?: ReviewScheduleEntity(puzzleId = puzzleId, userId = userId)
+    fun updateSchedule(
+        puzzleId: UUID,
+        userId: UUID,
+        solved: Boolean,
+    ) {
+        val schedule =
+            reviewScheduleRepository.findByPuzzleIdAndUserId(puzzleId, userId)
+                ?: ReviewScheduleEntity(puzzleId = puzzleId, userId = userId)
 
         if (solved) {
             schedule.box = minOf(schedule.box + 1, 5)
@@ -115,18 +123,23 @@ class PracticeService(
      * Record a completed practice session.
      */
     @Transactional
-    fun recordSession(username: String, request: RecordSessionRequest): PracticeSessionDto {
-        val user = userService.findByUsername(username)
-            ?: throw IllegalArgumentException("User $username not found")
+    fun recordSession(
+        username: String,
+        request: RecordSessionRequest,
+    ): PracticeSessionDto {
+        val user =
+            userService.findByUsername(username)
+                ?: throw IllegalArgumentException("User $username not found")
 
-        val session = PracticeSessionEntity(
-            userId = user.id!!,
-            finishedAt = Instant.now(),
-            puzzlesTotal = request.puzzlesTotal,
-            puzzlesSolved = request.puzzlesSolved,
-            focusTypes = request.focusTypes,
-            durationMs = request.durationMs,
-        )
+        val session =
+            PracticeSessionEntity(
+                userId = user.id!!,
+                finishedAt = Instant.now(),
+                puzzlesTotal = request.puzzlesTotal,
+                puzzlesSolved = request.puzzlesSolved,
+                focusTypes = request.focusTypes,
+                durationMs = request.durationMs,
+            )
 
         return sessionRepository.save(session).toDto()
     }
@@ -134,7 +147,10 @@ class PracticeService(
     /**
      * Get recent session history for a user.
      */
-    fun getRecentSessions(username: String, days: Int = 14): List<PracticeSessionDto> {
+    fun getRecentSessions(
+        username: String,
+        days: Int = 14,
+    ): List<PracticeSessionDto> {
         val user = userService.findByUsername(username) ?: return emptyList()
         val since = Instant.now().minus(Duration.ofDays(days.toLong()))
         return sessionRepository.findByUserIdSince(user.id!!, since).map { it.toDto() }

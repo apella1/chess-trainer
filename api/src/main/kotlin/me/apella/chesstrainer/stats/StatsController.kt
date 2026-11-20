@@ -10,18 +10,20 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/stats")
-class StatsController(private val statsService: StatsService) {
-
+class StatsController(
+    private val statsService: StatsService,
+) {
     /**
-     * GET /api/stats/weaknesses?username=...
+     * GET /api/stats/weaknesses?username=...&phase=...
      *
      * Returns ranked weaknesses by mistakes per 100 user moves.
-     * Groups by mistake type across all analyzed games.
+     * Groups by mistake type across all analyzed games, with optional phase filter.
      */
     @GetMapping("/weaknesses")
-    fun getWeaknesses(@RequestParam username: String): WeaknessesResponse {
-        return statsService.getWeaknesses(username)
-    }
+    fun getWeaknesses(
+        @RequestParam username: String,
+        @RequestParam(required = false) phase: String?,
+    ): WeaknessesResponse = statsService.getWeaknesses(username, phase)
 
     /**
      * GET /api/stats/trends?username=...&periods=6
@@ -31,7 +33,5 @@ class StatsController(private val statsService: StatsService) {
     fun getTrends(
         @RequestParam username: String,
         @RequestParam(defaultValue = "6") periods: Int,
-    ): TrendsResponse {
-        return statsService.getTrends(username, periods)
-    }
+    ): TrendsResponse = statsService.getTrends(username, periods)
 }

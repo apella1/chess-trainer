@@ -28,15 +28,19 @@ data class PracticeSessionDto(
     val successRate: Double?,
 )
 
-fun PracticeSessionEntity.toDto() = PracticeSessionDto(
-    id = id!!,
-    startedAt = startedAt,
-    finishedAt = finishedAt,
-    puzzlesTotal = puzzlesTotal,
-    puzzlesSolved = puzzlesSolved,
-    focusTypes = focusTypes,
-    durationMs = durationMs,
-    successRate = if (puzzlesTotal > 0) {
-        Math.round(puzzlesSolved * 100.0 / puzzlesTotal * 10) / 10.0
-    } else null,
-)
+fun PracticeSessionEntity.toDto() =
+    PracticeSessionDto(
+        id = id!!,
+        startedAt = startedAt,
+        finishedAt = finishedAt,
+        puzzlesTotal = puzzlesTotal,
+        puzzlesSolved = puzzlesSolved,
+        focusTypes = focusTypes,
+        durationMs = durationMs,
+        successRate =
+            if (puzzlesTotal > 0) {
+                Math.round(puzzlesSolved * 100.0 / puzzlesTotal * 10) / 10.0
+            } else {
+                null
+            },
+    )

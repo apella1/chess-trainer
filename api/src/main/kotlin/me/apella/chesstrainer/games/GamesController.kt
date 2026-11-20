@@ -16,8 +16,9 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/api/games")
-class GamesController(private val gameService: GameService) {
-
+class GamesController(
+    private val gameService: GameService,
+) {
     @GetMapping
     fun listGames(
         @RequestParam username: String,
@@ -33,9 +34,9 @@ class GamesController(private val gameService: GameService) {
     }
 
     @GetMapping("/{id}")
-    fun getGame(@PathVariable id: UUID): GameDetailDto {
-        return gameService.getGame(id)
-    }
+    fun getGame(
+        @PathVariable id: UUID,
+    ): GameDetailDto = gameService.getGame(id)
 
     @PostMapping("/upload")
     fun uploadPgn(

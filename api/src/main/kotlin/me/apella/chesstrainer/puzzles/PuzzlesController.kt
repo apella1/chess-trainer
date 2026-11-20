@@ -15,8 +15,9 @@ import java.util.UUID
  */
 @RestController
 @RequestMapping("/api/puzzles")
-class PuzzlesController(private val puzzleService: PuzzleService) {
-
+class PuzzlesController(
+    private val puzzleService: PuzzleService,
+) {
     /**
      * GET /api/puzzles/next?username=... — next unsolved puzzle for the user.
      */
@@ -26,22 +27,25 @@ class PuzzlesController(private val puzzleService: PuzzleService) {
         @RequestParam(required = false) theme: String?,
     ): ResponseEntity<PuzzleDto> {
         val puzzle = puzzleService.getNextPuzzle(username, theme)
-        return if (puzzle != null) ResponseEntity.ok(puzzle)
-        else ResponseEntity.noContent().build()
+        return if (puzzle != null) {
+            ResponseEntity.ok(puzzle)
+        } else {
+            ResponseEntity.noContent().build()
+        }
     }
 
     @GetMapping("/themes")
-    fun getThemes(@RequestParam username: String): List<String> {
-        return puzzleService.getThemes(username)
-    }
+    fun getThemes(
+        @RequestParam username: String,
+    ): List<String> = puzzleService.getThemes(username)
 
     /**
      * GET /api/puzzles/{id}/solution — full solution for refutation display.
      */
     @GetMapping("/{id}/solution")
-    fun getSolution(@PathVariable id: UUID): PuzzleSolutionDto {
-        return puzzleService.getSolution(id)
-    }
+    fun getSolution(
+        @PathVariable id: UUID,
+    ): PuzzleSolutionDto = puzzleService.getSolution(id)
 
     /**
      * POST /api/puzzles/{id}/attempts — record a solve attempt.
@@ -51,7 +55,5 @@ class PuzzlesController(private val puzzleService: PuzzleService) {
         @PathVariable id: UUID,
         @RequestParam username: String,
         @RequestBody request: AttemptRequest,
-    ): AttemptResponse {
-        return puzzleService.recordAttempt(id, username, request)
-    }
+    ): AttemptResponse = puzzleService.recordAttempt(id, username, request)
 }

@@ -20,7 +20,6 @@ class SyncService(
     private val syncedArchiveRepository: SyncedArchiveRepository,
     private val jobService: JobService,
 ) {
-
     private val log = LoggerFactory.getLogger(SyncService::class.java)
     private val syncProgressMap = ConcurrentHashMap<UUID, SyncProgress>()
 
@@ -32,9 +31,10 @@ class SyncService(
         val progress = SyncProgress(username = username)
         syncProgressMap[progress.id] = progress
 
-        val thread = Thread({
-            runSync(progress, username)
-        }, "sync-${progress.id}")
+        val thread =
+            Thread({
+                runSync(progress, username)
+            }, "sync-${progress.id}")
         thread.isDaemon = true
         thread.start()
 
@@ -43,7 +43,10 @@ class SyncService(
 
     fun getProgress(syncId: UUID): SyncProgress? = syncProgressMap[syncId]
 
-    private fun runSync(progress: SyncProgress, username: String) {
+    private fun runSync(
+        progress: SyncProgress,
+        username: String,
+    ) {
         try {
             log.info("Sync started for username={}", username)
             val user = userService.findOrCreateByUsername(username)
@@ -63,14 +66,18 @@ class SyncService(
             val alreadySynced = syncedArchiveRepository.findArchiveUrlsByUserId(user.id!!).toSet()
             val mostRecentSynced = alreadySynced.maxByOrNull { it }
 
-            val archivesToFetch = allArchiveUrls.filter { url ->
-                url !in alreadySynced || url == mostRecentSynced
-            }
+            val archivesToFetch =
+                allArchiveUrls.filter { url ->
+                    url !in alreadySynced || url == mostRecentSynced
+                }
 
             progress.archivesTotal = archivesToFetch.size
             log.info(
                 "Sync for {}: {} total archives, {} already synced, {} to fetch",
-                username, allArchiveUrls.size, alreadySynced.size, archivesToFetch.size,
+                username,
+                allArchiveUrls.size,
+                alreadySynced.size,
+                archivesToFetch.size,
             )
 
             if (archivesToFetch.isEmpty()) {
@@ -103,7 +110,7 @@ class SyncService(
                     // would be ideal, but JpaRepository.save with IdClass handles this)
                     if (archiveUrl !in alreadySynced) {
                         syncedArchiveRepository.save(
-                            SyncedArchive(userId = user.id!!, archiveUrl = archiveUrl)
+                            SyncedArchive(userId = user.id!!, archiveUrl = archiveUrl),
                         )
                     }
                 } catch (e: Exception) {
@@ -117,8 +124,11 @@ class SyncService(
             progress.finishedAt = Instant.now()
             log.info(
                 "Sync complete for {}: archives fetched={}/{}, gamesFound={}, newGames={}",
-                username, progress.archivesProcessed, progress.archivesTotal,
-                progress.gamesFound, progress.newGames,
+                username,
+                progress.archivesProcessed,
+                progress.archivesTotal,
+                progress.gamesFound,
+                progress.newGames,
             )
         } catch (e: Exception) {
             log.error("Sync failed for {}: {}", username, e.message, e)
@@ -132,10 +142,14 @@ class SyncService(
      * Import a single chess.com game if it doesn't already exist.
      * Idempotent on (userId, source, externalId).
      */
-    fun importGame(user: UserEntity, game: ChesscomGame): GameEntity? {
-        val externalId = game.uuid
-            ?: game.url?.substringAfterLast("/")
-            ?: return null
+    fun importGame(
+        user: UserEntity,
+        game: ChesscomGame,
+    ): GameEntity? {
+        val externalId =
+            game.uuid
+                ?: game.url?.substringAfterLast("/")
+                ?: return null
 
         if (gameRepository.existsByUserIdAndSourceAndExternalId(user.id!!, "chesscom", externalId)) {
             return null
@@ -148,24 +162,25 @@ class SyncService(
         val (userColor, userResult) = deriveColorAndResult(game, user.chesscomUsername)
         val playedAt = game.endTime?.let { Instant.ofEpochSecond(it) }
 
-        val entity = GameEntity(
-            userId = user.id!!,
-            source = "chesscom",
-            externalId = externalId,
-            url = game.url,
-            pgn = pgn,
-            playedAt = playedAt,
-            timeClass = game.timeClass,
-            timeControl = game.timeControl,
-            userColor = userColor,
-            result = userResult,
-            termination = headers["Termination"],
-            userRating = if (userColor == "white") game.white.rating else game.black.rating,
-            oppRating = if (userColor == "white") game.black.rating else game.white.rating,
-            oppUsername = if (userColor == "white") game.black.username else game.white.username,
-            eco = headers["ECO"],
-            openingName = PgnHeaders.openingName(headers),
-        )
+        val entity =
+            GameEntity(
+                userId = user.id!!,
+                source = "chesscom",
+                externalId = externalId,
+                url = game.url,
+                pgn = pgn,
+                playedAt = playedAt,
+                timeClass = game.timeClass,
+                timeControl = game.timeControl,
+                userColor = userColor,
+                result = userResult,
+                termination = headers["Termination"],
+                userRating = if (userColor == "white") game.white.rating else game.black.rating,
+                oppRating = if (userColor == "white") game.black.rating else game.white.rating,
+                oppUsername = if (userColor == "white") game.black.username else game.white.username,
+                eco = headers["ECO"],
+                openingName = PgnHeaders.openingName(headers),
+            )
 
         return gameRepository.save(entity)
     }
@@ -173,28 +188,33 @@ class SyncService(
     /**
      * Determine the user's color and result from the chess.com game data.
      */
-    private fun deriveColorAndResult(game: ChesscomGame, username: String): Pair<String?, String?> {
+    private fun deriveColorAndResult(
+        game: ChesscomGame,
+        username: String,
+    ): Pair<String?, String?> {
         val isWhite = game.white.username?.equals(username, ignoreCase = true) == true
         val isBlack = game.black.username?.equals(username, ignoreCase = true) == true
 
-        val userColor = when {
-            isWhite -> "white"
-            isBlack -> "black"
-            else -> return Pair(null, null)
-        }
+        val userColor =
+            when {
+                isWhite -> "white"
+                isBlack -> "black"
+                else -> return Pair(null, null)
+            }
 
         val userSide = if (isWhite) game.white else game.black
         val oppSide = if (isWhite) game.black else game.white
 
-        val userResult = when {
-            userSide.result == "win" -> "win"
-            oppSide.result == "win" -> "loss"
-            userSide.result == "draw" || oppSide.result == "draw" -> "draw"
-            listOf("stalemate", "insufficient", "repetition", "50move").any {
-                userSide.result?.contains(it) == true || oppSide.result?.contains(it) == true
-            } -> "draw"
-            else -> null
-        }
+        val userResult =
+            when {
+                userSide.result == "win" -> "win"
+                oppSide.result == "win" -> "loss"
+                userSide.result == "draw" || oppSide.result == "draw" -> "draw"
+                listOf("stalemate", "insufficient", "repetition", "50move").any {
+                    userSide.result?.contains(it) == true || oppSide.result?.contains(it) == true
+                } -> "draw"
+                else -> null
+            }
 
         return Pair(userColor, userResult)
     }
