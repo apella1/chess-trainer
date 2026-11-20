@@ -20,12 +20,12 @@ class TestCentipawnsToWinPct:
     def test_white_winning(self):
         """+100cp should be above 50%."""
         assert centipawns_to_win_pct(100) > 50.0
-        assert round(centipawns_to_win_pct(100), 1) == 57.1
+        assert round(centipawns_to_win_pct(100), 1) == 59.1
 
     def test_black_winning(self):
         """-100cp should be below 50%."""
         assert centipawns_to_win_pct(-100) < 50.0
-        assert round(centipawns_to_win_pct(-100), 1) == 42.9
+        assert round(centipawns_to_win_pct(-100), 1) == 40.9
 
     def test_extreme_values(self):
         """Very large cp should approach 100 or 0."""

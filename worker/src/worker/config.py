@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     worker_poll_seconds: int = 5
     worker_instance_id: str = ""  # defaults to hostname if empty
 
-    model_config = {"env_file": ".env", "case_sensitive": False}
+    model_config = {"env_file": ".env", "case_sensitive": False, "extra": "ignore"}
 
 
 settings = Settings()  # type: ignore[call-arg]
