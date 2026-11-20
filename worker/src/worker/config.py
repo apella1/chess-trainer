@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Ollama
     ollama_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "qwen3:8b"
-    review_prompt_version: str = "v1"
+    review_prompt_version: str = "v2"
 
     # Worker behaviour
     worker_poll_seconds: int = 5

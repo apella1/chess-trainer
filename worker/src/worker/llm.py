@@ -72,7 +72,8 @@ def build_prompt(facts: dict[str, Any]) -> str:
 Key moments (worst mistakes):
 """
     for i, m in enumerate(mistakes[:3], 1):
-        prompt += f"{i}. Ply {m['ply']}: played {m['san']}, best was {m['best_uci']} ({m['win_pct_loss']}% win chance lost, {m['phase']})\n"
+        m_type = m.get('type', 'mistake').replace('_', ' ')
+        prompt += f"{i}. Ply {m['ply']}: played {m['san']}, best was {m['best_uci']} (pattern: {m_type}, {m['win_pct_loss']}% win chance lost, {m['phase']})\n"
 
     prompt += "\nWrite a concise coaching review following the required JSON schema."
     return prompt
