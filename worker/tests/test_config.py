@@ -4,8 +4,6 @@ Phase 0 smoke tests for the worker.
 Tests that do not require a real database or Stockfish.
 """
 
-import os
-import pytest
 
 
 def test_settings_load_from_env(monkeypatch):
@@ -15,6 +13,7 @@ def test_settings_load_from_env(monkeypatch):
 
     # Re-import to pick up the monkeypatched env
     import importlib
+
     import worker.config as config_module
 
     importlib.reload(config_module)

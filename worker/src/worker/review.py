@@ -23,8 +23,10 @@ def review_game(job: dict[str, Any]) -> None:
     """
     game_id = str(job["game_id"])
 
-    # Skip if review already exists for this model/prompt version
-    if db.review_exists(game_id, settings.ollama_model, settings.review_prompt_version):
+    # Skip if review already exists for this model/prompt version (unless regenerate is requested)
+    payload = job.get("payload") or {}
+    force_regenerate = payload.get("regenerate") is True
+    if not force_regenerate and db.review_exists(game_id, settings.ollama_model, settings.review_prompt_version):
         log.info("Review already exists for game %s, skipping", game_id)
         return
 

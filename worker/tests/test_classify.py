@@ -6,6 +6,7 @@ Pure tests: no database, no engine, no network.
 """
 
 import chess
+
 from worker.classify import (
     classify_mistake,
     determine_phase_from_fen,
@@ -15,8 +16,6 @@ from worker.classify import (
 class TestClassifyMistake:
     def test_hanging_piece(self):
         """Moving a piece to an undefended, attacked square is a hanging_piece."""
-        # White has Knight on b1, King on h1 (far away). Black has Rook on d8.
-        # White plays Nd2 into the d-file, where Rook attacks it and no White piece defends it.
         board_before = chess.Board("3rk3/8/8/8/8/8/8/1N5K w - - 0 1")
         fen_before = board_before.fen()
         board_after = board_before.copy()
@@ -37,9 +36,33 @@ class TestClassifyMistake:
         )
         assert m_type == "hanging_piece"
 
+    def test_hanging_piece_underdefended(self):
+        """Piece with more attackers than defenders is detected as hanging piece."""
+        # White has Bishop on a1, Pawn on e3. Black has Knights on c6 and b5.
+        # Both black knights attack d4. White plays Bd4, where d4 is defended once (by e3 pawn)
+        # but attacked twice (by Nc6 and Nb5).
+        board_before = chess.Board("4k3/8/2n5/1n6/8/4P3/7P/B5K1 w - - 0 1")
+        fen_before = board_before.fen()
+        board_after = board_before.copy()
+        board_after.push_san("Bd4")
+        fen_after = board_after.fen()
+
+        m_type, _ = classify_mistake(
+            fen_before=fen_before,
+            fen_after=fen_after,
+            played_uci="a1d4",
+            best_uci="g1f2",
+            win_pct_before=50.0,
+            win_pct_after=25.0,
+            ply=26,
+            clock_ms=45000,
+            time_control="600",
+            eval_before_cp=0,
+        )
+        assert m_type == "hanging_piece"
+
     def test_missed_mate(self):
         """When best move delivers checkmate and played move does not."""
-        # Scholar's mate setup: White Queen on h5, Bishop on c4. Qxf7# is mate in 1.
         board_before = chess.Board("r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4")
         fen_before = board_before.fen()
         board_after = board_before.copy()
@@ -62,7 +85,6 @@ class TestClassifyMistake:
 
     def test_missed_fork(self):
         """When best move attacks two or more valuable enemy pieces."""
-        # White Knight on e5 jumps to c6: attacks Queen on b8 and Rook on e7.
         board_before = chess.Board("1q4k1/4r3/8/4N3/8/8/8/6K1 w - - 0 1")
         fen_before = board_before.fen()
         board_after = board_before.copy()
@@ -83,10 +105,31 @@ class TestClassifyMistake:
         )
         assert m_type == "missed_fork"
 
+    def test_missed_fork_royal(self):
+        """When best move forks the enemy King and Queen."""
+        # White Knight on d5 can jump to c7: attacks King on e8 and Queen on a8
+        board_before = chess.Board("q3k3/8/8/3N4/8/8/8/6K1 w - - 0 1")
+        fen_before = board_before.fen()
+        board_after = board_before.copy()
+        board_after.push_san("Kf2")
+        fen_after = board_after.fen()
+
+        m_type, _ = classify_mistake(
+            fen_before=fen_before,
+            fen_after=fen_after,
+            played_uci="g1f2",
+            best_uci="d5c7",
+            win_pct_before=70.0,
+            win_pct_after=50.0,
+            ply=20,
+            clock_ms=40000,
+            time_control="600",
+            eval_before_cp=200,
+        )
+        assert m_type == "missed_fork"
+
     def test_missed_pin(self):
         """When best move creates an absolute pin on an opponent piece."""
-        # Black King on h8, Black Queen on e8.
-        # White Rook on a8 pins Queen to King on the 8th rank.
         board_before = chess.Board("4q2k/8/8/R7/8/8/7P/6K1 w - - 0 1")
         fen_before = board_before.fen()
         board_after = board_before.copy()
@@ -109,8 +152,6 @@ class TestClassifyMistake:
 
     def test_missed_skewer(self):
         """When best move skewers a piece along a ray."""
-        # Black King on e5, Black Queen on e2 (behind the King on the e-file).
-        # White Rook on a8 plays Re8+ (skewers King and Queen).
         board_before = chess.Board("R7/8/8/4k3/8/8/4q3/6K1 w - - 0 1")
         fen_before = board_before.fen()
         board_after = board_before.copy()
@@ -133,7 +174,6 @@ class TestClassifyMistake:
 
     def test_missed_check(self):
         """When best move gives check without being a fork/pin/skewer."""
-        # White Rook on a1 plays Rc1+ against Black King on c8.
         board_before = chess.Board("2k5/8/8/8/8/8/8/R3K3 w - - 0 1")
         fen_before = board_before.fen()
         board_after = board_before.copy()
@@ -156,8 +196,6 @@ class TestClassifyMistake:
 
     def test_missed_capture(self):
         """When best move is a capture and played move is not."""
-        # White Rook on d1 is defended by King on e1.
-        # Black Queen on d5 is undefended. Rxd5 captures the Queen.
         board_before = chess.Board("4k3/8/8/3q4/8/8/8/3RK3 w - - 0 1")
         fen_before = board_before.fen()
         board_after = board_before.copy()
@@ -180,9 +218,6 @@ class TestClassifyMistake:
 
     def test_ignored_threat(self):
         """When opponent attacks user's piece and user fails to address it."""
-        # Black Bishop on g4 attacks undefended White Queen on d1.
-        # Best move is moving Queen to safety: d1c1 (non-capture).
-        # White plays a3 on the queenside, ignoring the threat.
         board_before = chess.Board("4k3/8/8/8/6b1/8/P7/3QK3 w - - 0 1")
         fen_before = board_before.fen()
         board_after = board_before.copy()
@@ -261,14 +296,55 @@ class TestClassifyMistake:
         )
         assert "time_pressure" in tags
 
+    def test_classification_idempotent_and_deterministic(self):
+        """
+        Acceptance check: Classification results are deterministic and idempotent
+        across re-runs.
+        """
+        board_before = chess.Board("4q2k/8/8/R7/8/8/7P/6K1 w - - 0 1")
+        fen_before = board_before.fen()
+        board_after = board_before.copy()
+        board_after.push_san("h3")
+        fen_after = board_after.fen()
+
+        res1 = classify_mistake(
+            fen_before=fen_before,
+            fen_after=fen_after,
+            played_uci="h2h3",
+            best_uci="a5a8",
+            win_pct_before=55.0,
+            win_pct_after=30.0,
+            ply=30,
+            clock_ms=40000,
+            time_control="600",
+            eval_before_cp=0,
+        )
+        res2 = classify_mistake(
+            fen_before=fen_before,
+            fen_after=fen_after,
+            played_uci="h2h3",
+            best_uci="a5a8",
+            win_pct_before=55.0,
+            win_pct_after=30.0,
+            ply=30,
+            clock_ms=40000,
+            time_control="600",
+            eval_before_cp=0,
+        )
+        assert res1 == res2
+
 
 class TestDeterminePhase:
-    def test_opening(self):
+    def test_opening_early(self):
         assert determine_phase_from_fen(chess.STARTING_FEN, ply=4) == "opening"
 
+    def test_opening_with_undeveloped_minors(self):
+        # Ply 10 but pieces still largely undeveloped on home squares
+        assert determine_phase_from_fen(chess.STARTING_FEN, ply=10) == "opening"
+
     def test_middlegame(self):
-        # 16 plies with queens on board is middlegame
-        assert determine_phase_from_fen(chess.STARTING_FEN, ply=16) == "middlegame"
+        # Move past ply 24 with pieces on board
+        assert determine_phase_from_fen(chess.STARTING_FEN, ply=26) == "middlegame"
 
     def test_endgame(self):
         # Queens gone and few pieces

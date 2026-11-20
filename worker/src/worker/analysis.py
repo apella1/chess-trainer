@@ -13,7 +13,6 @@ All eval values are from the mover's perspective (positive = good for the
 side that is about to move or just moved).
 """
 
-import json
 import logging
 from typing import Any
 
@@ -21,6 +20,7 @@ import chess
 import chess.pgn
 
 from worker import db, winprob
+from worker.classify import classify_mistake, determine_phase_from_fen
 from worker.config import settings
 from worker.engine import EngineWrapper
 
@@ -117,7 +117,7 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
         san = board.san(move)
         uci = move.uci()
         fen_before = board.fen()
-        clock_before = game.clock() if hasattr(game, "mainline") else None
+        board_before = board.copy()
 
         board.push(move)
         fen_after = board.fen()
@@ -139,6 +139,8 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
             mate_after=mate_after,
             played_is_best=played_is_best,
             ply=ply,
+            board_before=board_before,
+            played_move=move,
         )
 
         # --- Clock data extracted above from PGN comments ---
@@ -179,14 +181,26 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
         if winprob.is_mistake(classification.classification):
             move_eval_id = db.get_move_eval_id(run_id, move_id)
             if move_eval_id:
-                phase = winprob.determine_phase(ply, fen_before)
+                mistake_type, tags = classify_mistake(
+                    fen_before=fen_before,
+                    fen_after=fen_after,
+                    played_uci=uci,
+                    best_uci=best_uci or "",
+                    win_pct_before=float(classification.win_pct_before),
+                    win_pct_after=float(classification.win_pct_after),
+                    ply=ply,
+                    clock_ms=clock_ms_remaining,
+                    time_control=game.headers.get("TimeControl"),
+                    eval_before_cp=eval_before_cp,
+                )
+                phase = determine_phase_from_fen(fen_before, ply)
                 db.insert_mistake(
                     game_id=game_id,
                     user_id=user_id,
                     move_eval_id=move_eval_id,
                     kind="mistake",
-                    mistake_type="other",  # Phase 5 adds proper type detection
-                    tags=[],
+                    mistake_type=mistake_type,
+                    tags=tags,
                     phase=phase,
                     severity=round(classification.win_pct_loss, 2),
                     material_swing_cp=abs((eval_before_cp or 0) - (eval_after_cp or 0)),
@@ -199,6 +213,10 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
             classification.classification, classification.win_pct_loss,
         )
 
+    # Reclassify mistakes with proper heuristics (ensures completeness)
+    from worker.reclassify import reclassify_game
+    reclassify_game(game_id)
+
     # --- Complete ---
     db.complete_analysis_run(run_id)
     db.update_game_analysis_status(game_id, "done")
@@ -207,7 +225,3 @@ def analyze_game(job: dict[str, Any], engine: EngineWrapper) -> None:
     # Enqueue puzzle generation and review for this game
     db.enqueue_job(user_id, game_id, "generate_puzzles")
     db.enqueue_job(user_id, game_id, "review_game")
-
-    # Reclassify mistakes with proper type heuristics (synchronous — fast)
-    from worker.reclassify import reclassify_game
-    reclassify_game(game_id)

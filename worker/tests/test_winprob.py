@@ -7,8 +7,8 @@ These tests are pure: no database, no engine, no network.
 from worker.winprob import (
     centipawns_to_win_pct,
     classify_move,
-    is_mistake,
     determine_phase,
+    is_mistake,
 )
 
 

@@ -77,6 +77,7 @@ def build_facts(game_id: str) -> dict[str, Any] | None:
             "best_uci": m.get("best_uci"),
             "fen_before": m.get("fen_before"),
             "type": m.get("type") or "other",
+            "tags": m.get("tags") or [],
             "phase": m.get("phase") or "middlegame",
             "win_pct_loss": round(float(m.get("win_pct_loss") or 0), 1),
             "clock_ms": m.get("clock_ms_remaining"),

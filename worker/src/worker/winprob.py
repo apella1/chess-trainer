@@ -1,7 +1,7 @@
 """
 Win probability conversion and move classification.
 
-Converts centipawn evaluations to win probability using the Lichess formula:
+Converts centipawns evaluations to win probability using the Lichess formula:
     win% = 50 + 50 * (2 / (1 + exp(-0.00368208 * cp)) - 1)
 
 Mate scores map to 100 (forced win) or 0 (forced loss).
@@ -16,12 +16,17 @@ Classification thresholds (all tunable here):
 import math
 from typing import NamedTuple
 
+import chess
+
+from worker.eco import is_book_move
+
 # --- Thresholds (tunable in one place) ---
 INACCURACY_THRESHOLD = 5.0
 MISTAKE_THRESHOLD = 10.0
 BLUNDER_THRESHOLD = 15.0
 
-# Skip classification while in opening theory (plies 1-10)
+# Skip classification for standard opening theory (first 10 plies unconditionally,
+# or beyond if conforming to ECO theory)
 OPENING_PLY_LIMIT = 10
 
 # Coefficient for the Lichess win-probability formula
@@ -55,9 +60,11 @@ def classify_move(
     mate_after: int | None,
     played_is_best: bool,
     ply: int,
+    board_before: chess.Board | None = None,
+    played_move: chess.Move | None = None,
 ) -> MoveClassification:
     """
-    Classify a move based on win-probability loss.
+    Classify a move based on win-probability loss and ECO opening book conformity.
 
     All eval values are from the mover's perspective (positive = good for the
     side that is about to move or just moved).
@@ -69,6 +76,8 @@ def classify_move(
         mate_after: moves to mate after (None if no mate)
         played_is_best: whether the played move matches the engine's best move
         ply: 1-based ply number (odd = White, even = Black)
+        board_before: optional chess.Board before the move for ECO book verification
+        played_move: optional chess.Move played for ECO book verification
 
     Returns:
         MoveClassification with classification string and win% values.
@@ -77,8 +86,14 @@ def classify_move(
     win_pct_after = centipawns_to_win_pct(eval_after_cp, mate_after)
     win_pct_loss = win_pct_before - win_pct_after
 
-    # Skip classification for opening theory moves
-    if ply <= OPENING_PLY_LIMIT:
+    # Skip classification for opening theory moves:
+    # 1. First 10 plies unconditionally
+    # 2. Or if the move conforms to ECO book theory
+    if ply <= OPENING_PLY_LIMIT or (
+        board_before is not None
+        and played_move is not None
+        and is_book_move(board_before, played_move)
+    ):
         return MoveClassification("book", win_pct_before, win_pct_after, win_pct_loss)
 
     if played_is_best:
@@ -101,16 +116,9 @@ def is_mistake(classification: str) -> bool:
 
 def determine_phase(ply: int, fen: str) -> str:
     """
-    Determine the game phase from ply number and piece count.
-    opening: plies 1-12 (approx)
-    middlegame: plies 12-35 (approx)
-    endgame: after material drops below threshold
+    Determine the game phase from piece count, material, and development.
+    Delegates to classify.determine_phase_from_fen.
     """
-    # Simple heuristic based on ply number
-    # Phase 5 will add proper piece-count-based detection
-    if ply <= 12:
-        return "opening"
-    elif ply <= 40:
-        return "middlegame"
-    else:
-        return "endgame"
+    from worker.classify import determine_phase_from_fen
+
+    return determine_phase_from_fen(fen, ply)

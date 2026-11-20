@@ -8,9 +8,9 @@ they call functions from this module which can be mocked in tests.
 
 import json
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime, timezone
-from typing import Any, Generator
+from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
@@ -387,7 +387,7 @@ def fetch_mistakes_with_evals(game_id: str) -> list[dict[str, Any]]:
         with get_conn() as conn:
             rows = conn.execute(
                 """
-                SELECT m.id, m.kind, m.type, m.phase,
+                SELECT m.id, m.kind, m.type, m.tags, m.phase,
                        me.classification, me.win_pct_before, me.win_pct_loss,
                        me.best_uci, me.best_eval_cp, me.second_best_eval_cp,
                        mo.fen_before, mo.color, mo.ply, mo.san

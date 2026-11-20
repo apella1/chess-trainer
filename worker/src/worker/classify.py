@@ -5,7 +5,7 @@ Each function inspects board positions and move data to determine the
 mistake type. Returns the first matching type in priority order.
 
 Types (matching plan section 10):
-1. hanging_piece      — user piece is attacked and undefended after the move (caused by move)
+1. hanging_piece      — user piece is attacked and undefended/underdefended after the move
 2. missed_mate        — best move delivers checkmate
 3. missed_fork        — best move attacks two or more valuable pieces
 4. missed_pin         — best move creates an absolute pin
@@ -20,24 +20,24 @@ Types (matching plan section 10):
 
 Tags (orthogonal):
 - time_pressure — clock < 30s or < 10% base time
+- rating_characteristic — move matches Maia 1100 prediction
 """
 
 import logging
-from typing import Any
 
 import chess
 import chess.pgn
 
 log = logging.getLogger(__name__)
 
-# Piece values for material swing detection
+# Piece values for material swing and trade evaluation
 PIECE_VALUES = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
     chess.BISHOP: 330,
     chess.ROOK: 500,
     chess.QUEEN: 900,
-    chess.KING: 0,
+    chess.KING: 10000,
 }
 
 OPENING_PLY_LIMIT = 24  # first 12 moves per side
@@ -55,30 +55,34 @@ def _board_from_fen(fen: str) -> chess.Board:
     return chess.Board(fen)
 
 
-def _is_attacked_and_undefended(board: chess.Board, square: chess.Square, color: chess.Color) -> bool:
-    """Check if a square containing a piece of `color` is attacked by opponent and not defended."""
+def _is_underdefended(board: chess.Board, square: chess.Square, color: chess.Color) -> bool:
+    """
+    Check if a square containing a piece of `color` is attacked and underdefended.
+    Underdefended means:
+    - Attacked by opponent and 0 defenders, OR
+    - Attacked by a lower-value opponent piece (e.g. Pawn attacking Knight), OR
+    - Number of opponent attackers exceeds number of friendly defenders.
+    """
     opponent = not color
-    if not board.is_attacked_by(opponent, square):
+    opp_attackers = board.attackers(opponent, square)
+    if not opp_attackers:
         return False
-    # Check if defended by own pieces
-    if board.is_attacked_by(color, square):
-        return False
-    return True
 
+    own_defenders = board.attackers(color, square)
+    if not own_defenders:
+        return True
 
-def _attacked_by_lower_value(board: chess.Board, square: chess.Square, color: chess.Color) -> bool:
-    """Check if piece on square is attacked by a lower-value opponent piece."""
     piece = board.piece_at(square)
-    if piece is None:
-        return False
-    piece_value = PIECE_VALUES.get(piece.piece_type, 0)
-    opponent = not color
+    if piece is not None:
+        piece_value = PIECE_VALUES.get(piece.piece_type, 0)
+        # Attacked by lower value piece (e.g. pawn attacking rook/queen)
+        for attacker_sq in opp_attackers:
+            attacker = board.piece_at(attacker_sq)
+            if attacker and PIECE_VALUES.get(attacker.piece_type, 0) < piece_value:
+                return True
 
-    for attacker_sq in board.attackers(opponent, square):
-        attacker = board.piece_at(attacker_sq)
-        if attacker and PIECE_VALUES.get(attacker.piece_type, 0) < piece_value:
-            return True
-    return False
+    # More attackers than defenders
+    return len(opp_attackers) > len(own_defenders)
 
 
 def _check_missed_pin(board_before: chess.Board, best_move: chess.Move, side: chess.Color) -> bool:
@@ -98,9 +102,14 @@ def _check_missed_pin(board_before: chess.Board, best_move: chess.Move, side: ch
         ray = chess.SquareSet.ray(best_move.to_square, king_sq)
         for sq in ray:
             target = board_after.piece_at(sq)
-            if target and target.color == opp_color and target.piece_type != chess.KING:
-                if board_after.is_pinned(opp_color, sq) and not board_before.is_pinned(opp_color, sq):
-                    return True
+            if (
+                target
+                and target.color == opp_color
+                and target.piece_type != chess.KING
+                and board_after.is_pinned(opp_color, sq)
+                and not board_before.is_pinned(opp_color, sq)
+            ):
+                return True
     except Exception as exc:
         log.debug("Error checking missed pin: %s", exc)
     return False
@@ -146,7 +155,7 @@ def _check_missed_skewer(board_before: chess.Board, best_move: chess.Move, side:
             if len(pieces_hit) == 2:
                 (_, p1), (_, p2) = pieces_hit
                 if p1.color == opp_color and p2.color == opp_color:
-                    v1 = 1000 if p1.piece_type == chess.KING else PIECE_VALUES.get(p1.piece_type, 0)
+                    v1 = 10000 if p1.piece_type == chess.KING else PIECE_VALUES.get(p1.piece_type, 0)
                     v2 = PIECE_VALUES.get(p2.piece_type, 0)
                     if v1 > v2 and v2 >= PIECE_VALUES[chess.KNIGHT]:
                         return True
@@ -165,28 +174,22 @@ def _check_hanging_piece(
     Check if user's move actively hung a piece (moved into attack, moved defender away,
     or opened a line attacking own piece).
     """
-    # Check 1: User moved a piece directly to an attacked & undefended/underdefended square
     sq = played_move.to_square
     p = board_after_played.piece_at(sq)
-    if p and p.color == side and p.piece_type != chess.KING:
-        if _is_attacked_and_undefended(board_after_played, sq, side) or _attacked_by_lower_value(board_after_played, sq, side):
-            return True
+    if p and p.color == side and p.piece_type != chess.KING and _is_underdefended(board_after_played, sq, side):
+        return True
 
-    # Check 2: Another user piece that was safe before the move became attacked/undefended
+    # Check another user piece that was safe before the move became underdefended
     for sq_i in chess.SQUARES:
         piece = board_after_played.piece_at(sq_i)
-        if piece and piece.color == side and piece.piece_type != chess.KING:
-            is_hung_now = (
-                _is_attacked_and_undefended(board_after_played, sq_i, side) or
-                _attacked_by_lower_value(board_after_played, sq_i, side)
-            )
-            if is_hung_now:
-                was_hung_before = (
-                    _is_attacked_and_undefended(board_before, sq_i, side) or
-                    _attacked_by_lower_value(board_before, sq_i, side)
-                )
-                if not was_hung_before:
-                    return True
+        if (
+            piece
+            and piece.color == side
+            and piece.piece_type != chess.KING
+            and _is_underdefended(board_after_played, sq_i, side)
+            and not _is_underdefended(board_before, sq_i, side)
+        ):
+            return True
 
     return False
 
@@ -205,9 +208,8 @@ def _check_ignored_threat(
         threatened_sqs: list[chess.Square] = []
         for sq in chess.SQUARES:
             piece = board_before.piece_at(sq)
-            if piece and piece.color == side and piece.piece_type != chess.KING:
-                if _is_attacked_and_undefended(board_before, sq, side) or _attacked_by_lower_value(board_before, sq, side):
-                    threatened_sqs.append(sq)
+            if piece and piece.color == side and piece.piece_type != chess.KING and _is_underdefended(board_before, sq, side):
+                threatened_sqs.append(sq)
 
         if not threatened_sqs:
             return False
@@ -226,13 +228,38 @@ def _check_ignored_threat(
         board_after_played = _board_from_fen(fen_after)
         for t_sq in threatened_sqs:
             p_after = board_after_played.piece_at(t_sq)
-            if p_after and p_after.color == side:
-                if (_is_attacked_and_undefended(board_after_played, t_sq, side) or
-                        _attacked_by_lower_value(board_after_played, t_sq, side)):
-                    return True
+            if p_after and p_after.color == side and _is_underdefended(board_after_played, t_sq, side):
+                return True
     except Exception as exc:
         log.debug("Error checking ignored threat: %s", exc)
     return False
+
+
+def _check_missed_fork(
+    board_after_best: chess.Board,
+    best_move: chess.Move,
+    side: chess.Color,
+) -> bool:
+    """
+    Check if the best move delivers a fork.
+    A fork means the moved piece attacks two or more enemy targets:
+    kings, queens, rooks, minor pieces, or undefended pawns.
+    """
+    moved_sq = best_move.to_square
+    attacked_squares = board_after_best.attacks(moved_sq)
+    opp_color = not side
+
+    attacked_targets = 0
+    for sq in attacked_squares:
+        target = board_after_best.piece_at(sq)
+        if target and target.color == opp_color and (
+            target.piece_type == chess.KING
+            or PIECE_VALUES.get(target.piece_type, 0) >= PIECE_VALUES[chess.KNIGHT]
+            or (target.piece_type == chess.PAWN and _is_underdefended(board_after_best, sq, opp_color))
+        ):
+            attacked_targets += 1
+
+    return attacked_targets >= 2
 
 
 def classify_mistake(
@@ -269,6 +296,16 @@ def classify_mistake(
         board_before = _board_from_fen(fen_before)
         side = board_before.turn  # the side that made the mistake
 
+        # Check optional Maia characteristic mistake comparison
+        try:
+            from worker.maia import compare_mistake_with_maia
+
+            maia_res = compare_mistake_with_maia(board_before, played_uci)
+            if maia_res and maia_res.get("is_characteristic"):
+                tags.append("rating_characteristic")
+        except Exception:
+            pass
+
         try:
             best_move = chess.Move.from_uci(best_uci)
             played_move = chess.Move.from_uci(played_uci)
@@ -288,14 +325,7 @@ def classify_mistake(
             return "missed_mate", tags
 
         # 3. Missed fork — best move attacks two or more valuable pieces
-        attacked_valuable = 0
-        for sq in chess.SQUARES:
-            target = board_after_best.piece_at(sq)
-            if target and target.color != side:
-                if PIECE_VALUES.get(target.piece_type, 0) >= PIECE_VALUES[chess.KNIGHT]:
-                    if board_after_best.is_attacked_by(side, sq):
-                        attacked_valuable += 1
-        if attacked_valuable >= 2:
+        if _check_missed_fork(board_after_best, best_move, side):
             return "missed_fork", tags
 
         # 4. Missed pin — best move creates an absolute pin on opponent piece
@@ -324,18 +354,17 @@ def classify_mistake(
             king_rank = chess.square_rank(king_sq)
             if king_rank in (0, 7) and board_before.gives_check(best_move):
                 best_piece = board_after_best.piece_at(best_move.to_square)
-                if best_piece and best_piece.piece_type in (chess.ROOK, chess.QUEEN):
-                    if chess.square_rank(best_move.to_square) == king_rank:
-                        front_rank = 1 if king_rank == 0 else 6
-                        king_file = chess.square_file(king_sq)
-                        pawns_in_front = sum(
-                            1 for f in [king_file - 1, king_file, king_file + 1]
-                            if 0 <= f < 8
-                            and (p := board_after_best.piece_at(chess.square(f, front_rank)))
-                            and p.color != side
-                        )
-                        if pawns_in_front >= 2:
-                            return "back_rank", tags
+                if best_piece and best_piece.piece_type in (chess.ROOK, chess.QUEEN) and chess.square_rank(best_move.to_square) == king_rank:
+                    front_rank = 1 if king_rank == 0 else 6
+                    king_file = chess.square_file(king_sq)
+                    pawns_in_front = sum(
+                        1 for f in [king_file - 1, king_file, king_file + 1]
+                        if 0 <= f < 8
+                        and (p := board_after_best.piece_at(chess.square(f, front_rank)))
+                        and p.color != side
+                    )
+                    if pawns_in_front >= 2:
+                        return "back_rank", tags
 
         # 10. Conversion — won position (>75%) collapses to <=55%
         if win_pct_before > CONVERSION_WIN_THRESHOLD and win_pct_after <= CONVERSION_COLLAPSE_THRESHOLD:
@@ -354,30 +383,77 @@ def classify_mistake(
 
 def determine_phase_from_fen(fen: str, ply: int) -> str:
     """
-    Determine game phase from position (piece count) rather than just ply.
-    opening: < 12 plies
-    endgame: queens gone and fewer than 12 minor/major pieces on board
-    middlegame: everything else
-    """
-    if ply <= 12:
-        return "opening"
+    Determine game phase based on piece count, material, and development.
 
+    Endgame:
+    - Queens traded off and <= 6 minor/major pieces on the board, OR
+    - Total non-pawn material per side <= 13 points (e.g. R + N = 8, Q = 9).
+
+    Opening:
+    - Ply <= 6 unconditionally, OR
+    - Ply <= 24 while minor pieces (knights and bishops) remain largely undeveloped
+      on starting squares (b1, c1, f1, g1 for White; b8, c8, f8, g8 for Black).
+
+    Middlegame:
+    - Everything between opening and endgame.
+    """
     try:
         board = chess.Board(fen)
-        major_minor = sum(
-            1 for sq in chess.SQUARES
-            if (p := board.piece_at(sq)) is not None
-            and p.piece_type not in (chess.PAWN, chess.KING)
-        )
+
         queens = sum(
             1 for sq in chess.SQUARES
             if (p := board.piece_at(sq)) is not None
             and p.piece_type == chess.QUEEN
         )
+        major_minor = sum(
+            1 for sq in chess.SQUARES
+            if (p := board.piece_at(sq)) is not None
+            and p.piece_type not in (chess.PAWN, chess.KING)
+        )
 
+        # Endgame checks
         if queens == 0 and major_minor <= 6:
             return "endgame"
-    except Exception:
-        pass
 
-    return "middlegame"
+        # Calculate non-pawn material for each side
+        white_material = sum(
+            PIECE_VALUES.get(p.piece_type, 0)
+            for sq in chess.SQUARES
+            if (p := board.piece_at(sq)) and p.color == chess.WHITE and p.piece_type not in (chess.PAWN, chess.KING)
+        )
+        black_material = sum(
+            PIECE_VALUES.get(p.piece_type, 0)
+            for sq in chess.SQUARES
+            if (p := board.piece_at(sq)) and p.color == chess.BLACK and p.piece_type not in (chess.PAWN, chess.KING)
+        )
+        # 1300 cp corresponds to Queen + Minor piece or 2 Rooks + Minor
+        if white_material <= 1300 and black_material <= 1300 and major_minor <= 4:
+            return "endgame"
+
+        # Opening vs Middlegame checks
+        if ply <= 6:
+            return "opening"
+
+        if ply > OPENING_PLY_LIMIT:
+            return "middlegame"
+
+        # Between ply 7 and 24: check development of minor pieces on home squares
+        white_home_minors = [chess.B1, chess.C1, chess.F1, chess.G1]
+        black_home_minors = [chess.B8, chess.C8, chess.F8, chess.G8]
+
+        undeveloped_white = sum(
+            1 for sq in white_home_minors
+            if (p := board.piece_at(sq)) and p.color == chess.WHITE and p.piece_type in (chess.KNIGHT, chess.BISHOP)
+        )
+        undeveloped_black = sum(
+            1 for sq in black_home_minors
+            if (p := board.piece_at(sq)) and p.color == chess.BLACK and p.piece_type in (chess.KNIGHT, chess.BISHOP)
+        )
+
+        # If both sides still have 2 or more minor pieces on home squares, still opening
+        if undeveloped_white >= 2 and undeveloped_black >= 2:
+            return "opening"
+
+        return "middlegame"
+    except Exception:
+        return "opening" if ply <= 12 else ("endgame" if ply >= 45 else "middlegame")

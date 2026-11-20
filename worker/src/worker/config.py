@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    db_url: str
+    db_url: str = ""
 
     # Stockfish
     stockfish_path: str = "/usr/games/stockfish"
@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # Worker behaviour
     worker_poll_seconds: int = 5
     worker_instance_id: str = ""  # defaults to hostname if empty
+
+    # Maia / lc0 (optional human move prediction)
+    lc0_path: str = "lc0"
+    maia_weights_path: str | None = None
 
     model_config = {"env_file": ".env", "case_sensitive": False, "extra": "ignore"}
 

@@ -11,7 +11,6 @@ the worker loops, writes heartbeats, checks Ollama, and sleeps.
 """
 
 import logging
-import os
 import socket
 import threading
 import time
