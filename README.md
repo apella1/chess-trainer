@@ -95,7 +95,23 @@ Phase 4 ✅ [Local LLM game reviews](docs/plan/phase-4-game-reviews.md)
 - ReviewPanel in game detail: summary, key moments, strengths, habit to fix
 - Regenerate button, model/prompt version badge
 
-Phase 5 🔄 (in progress) — [Level-aware weakness profile](docs/plan/phase-5-weakness-profile.md)
+Phase 5 ✅ [Level-aware weakness profile](docs/plan/phase-5-weakness-profile.md)
+- Complete mistake heuristics tailored to the 1000–1400 rating band (hanging/underdefended piece, missed tactics, forks, pins, skewers, ignored threats, conversion collapse, time-pressure tagging)
+- ECO dataset opening book integration to categorize openings and suppress false tactical blunder flags on book moves
+- Game phase tagging (opening, middlegame, endgame) based on piece count, material, and development
+- Aggregated `/api/stats/weaknesses` endpoint ranking mistakes strictly by error rate per 100 moves, with frequency percentages and severity breakdown
+- Interactive Weaknesses page with ranked cards, phase filtering (All, Opening, Middlegame, Endgame), and severity breakdown
+- Direct tactical drill-down: click "Train Weakness" on any weakness card to immediately launch targeted practice
+- Optional Maia 1100 model comparison with graceful fallback when lc0/weights are not installed
+- LLM game review regeneration incorporating rich classification tags and mistake context
+
+### How to Demo Phase 5
+1. Sync games from a chess.com account (or upload PGNs) and allow engine analysis to complete.
+2. Navigate to **Weaknesses** (`http://localhost:5176/weaknesses`) in the navigation bar.
+3. Review your recurring flaws ranked by error rate per 100 moves, with frequency percentages and severity breakdowns (blunders, mistakes, inaccuracies).
+4. Filter by game phase (Opening, Middlegame, Endgame) using the phase filter buttons.
+5. Click **Train Weakness** on any weakness card (such as Hanging Piece or Missed Fork) to immediately launch tactical training for that specific category.
+
 Phase 6 🔄 (in progress) — [Deliberate practice loop](docs/plan/phase-6-practice-loop.md)
 Phase 7 (planned) — [Unified navigation and app shell](docs/plan/phase-7-app-shell-navigation.md)
 Phase 8 (planned) — [Business-grade landing page and public deployment](docs/plan/phase-8-landing-page-deployment.md)
