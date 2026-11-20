@@ -46,3 +46,25 @@ starting any task.
     - `feat(api): add /api/status endpoint`
     - `feat(db): add V1 Flyway migration for users and heartbeats`
     - `chore(infra): configure docker-compose with all four services`
+
+11. **Preserve active user data.** The PostgreSQL database contains active personal
+    training data that must NEVER be destroyed.
+    - NEVER run `docker compose down -v` or `make clean`.
+    - NEVER drop volumes, truncate tables, or run destructive migrations.
+    - All schema evolution must be additive and backwards-compatible with existing data.
+
+12. **Contextual UI navigation bridges.** Every feature view must offer a direct link
+    to the next step in the coaching loop (e.g., Game Review -> Train Weakness;
+    Weakness Card -> Start Session; Puzzle -> View Original Game). Never leave dead ends.
+
+13. **Server state belongs in TanStack Query.** All API communication occurs exclusively
+    through typed clients in `src/api/` wrapped with TanStack Query hooks. Do not store
+    server data in Redux or local component state.
+
+14. **Every phase must be standalone.** Deliverables must be fully usable end-to-end
+    at the end of the phase. Never commit placeholder buttons or non-functional links
+    that depend on unbuilt future phases without appropriate empty-state guidance.
+
+15. **Production and public accessibility.** Ensure public/unauthenticated pages
+    (such as the landing page and demo widgets) load gracefully without database errors
+    or leaking protected endpoints.
