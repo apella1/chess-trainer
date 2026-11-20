@@ -95,9 +95,11 @@ Phase 4 ✅ [Local LLM game reviews](docs/plan/phase-4-game-reviews.md)
 - ReviewPanel in game detail: summary, key moments, strengths, habit to fix
 - Regenerate button, model/prompt version badge
 
-Phase 5 (planned) — [Level-aware weakness profile](docs/plan/phase-5-weakness-profile.md)
-Phase 6 (planned) — [Deliberate practice loop](docs/plan/phase-6-practice-loop.md)
-Phase 7 (planned) — [Multi-user auth](docs/plan/phase-7-multi-user.md)
-Phase 8 (planned) — [Extensions](docs/plan/phase-8-extensions.md)
-Phase 9 (planned) — [Guided first-value onboarding](docs/plan/phase-9-first-value.md)
-Phase 10 (planned) — [Evidence-based improvement loop](docs/plan/phase-10-improvement-loop.md)
+Phase 5 🔄 (in progress) — [Level-aware weakness profile](docs/plan/phase-5-weakness-profile.md)
+Phase 6 🔄 (in progress) — [Deliberate practice loop](docs/plan/phase-6-practice-loop.md)
+Phase 7 (planned) — [Unified navigation and app shell](docs/plan/phase-7-app-shell-navigation.md)
+Phase 8 (planned) — [Business-grade landing page and public deployment](docs/plan/phase-8-landing-page-deployment.md)
+Phase 9 (planned) — [Multi-user auth and tenant isolation](docs/plan/phase-9-multi-user.md)
+Phase 10 (planned) — [Guided first-value onboarding](docs/plan/phase-10-first-value-onboarding.md)
+Phase 11 (planned) — [Evidence-based improvement loop](docs/plan/phase-11-improvement-loop.md)
+Phase 12 (planned) — [Extensions and ecosystem integrations](docs/plan/phase-12-extensions.md)

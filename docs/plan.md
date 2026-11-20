@@ -403,10 +403,12 @@ Each phase is complete only when its acceptance checks pass and the app runs end
 • [Phase 4: Local LLM game reviews](plan/phase-4-game-reviews.md)
 • [Phase 5: Level-aware weakness profile](plan/phase-5-weakness-profile.md)
 • [Phase 6: Deliberate practice loop](plan/phase-6-practice-loop.md)
-• [Phase 7: Plug-and-play for other people](plan/phase-7-multi-user.md)
-• [Phase 8: Extensions](plan/phase-8-extensions.md)
-• [Phase 9: Guided first-value onboarding](plan/phase-9-first-value.md)
-• [Phase 10: Evidence-based improvement loop](plan/phase-10-improvement-loop.md)
+• [Phase 7: Unified navigation and app shell](plan/phase-7-app-shell-navigation.md)
+• [Phase 8: Business-grade landing page and public deployment](plan/phase-8-landing-page-deployment.md)
+• [Phase 9: Multi-user authentication and tenant isolation](plan/phase-9-multi-user.md)
+• [Phase 10: Guided first-value onboarding](plan/phase-10-first-value-onboarding.md)
+• [Phase 11: Evidence-based improvement loop](plan/phase-11-improvement-loop.md)
+• [Phase 12: Extensions and ecosystem integrations](plan/phase-12-extensions.md)
 13. Testing strategy
 • API: Testcontainers Postgres, one base test class, fixtures for chess.com JSON. No live network.
 • Worker: pytest with fixture PGNs and low-depth Stockfish for determinism; unit tests for winprob, classify and puzzle filters; LLM tests use recorded and deliberately broken outputs.
