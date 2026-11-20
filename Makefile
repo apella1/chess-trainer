@@ -17,12 +17,12 @@ logs: ## Tail logs for all services
 	docker compose logs -f
 
 test: ## Run all tests (API + worker)
-	docker compose run --rm api ./gradlew test
-	docker compose run --rm worker python -m pytest tests/ -v
+	(cd api && ./gradlew test)
+	(cd worker && pytest tests/ -v)
 
 lint: ## Run linters (ktlint for API, ruff for worker)
-	docker compose run --rm api ./gradlew ktlintCheck
-	docker compose run --rm worker python -m ruff check src/ tests/
+	(cd api && ./gradlew ktlintCheck)
+	(cd worker && ruff check src/ tests/)
 
 migrate: ## Apply pending Flyway migrations against the running DB
 	docker compose run --rm api ./gradlew flywayMigrate
