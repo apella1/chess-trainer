@@ -42,6 +42,10 @@ starting any task.
     Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
     Scopes: `api`, `worker`, `web`, `db`, `infra`, `docs`
 
+    - **Isolate commits to logical units.** Keep commits scoped to a cohesive set
+      of related changes across affected files. Avoid large bundle commits combining
+      multiple unrelated concerns or phases.
+
     Examples:
     - `feat(api): add /api/status endpoint`
     - `feat(db): add V1 Flyway migration for users and heartbeats`
